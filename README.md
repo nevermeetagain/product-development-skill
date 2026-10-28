@@ -1,6 +1,6 @@
 # product-development：统一 AI 产品开发 Skill
 
-版本 0.4.2 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
+版本 0.4.3 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
 核心：**有据可依，行为留痕**。
 
 ## 适合谁
@@ -26,6 +26,7 @@ product-development/
 bash scripts/install.sh both                # Ubuntu / macOS / Git Bash
 ```
 两者都只复制 SKILL.md、README、CHANGELOG、references、templates、scripts；已存在时加 `-Force` / `--force` 覆盖（旧目录备份），`-Dir` / `--dir` 指定安装根目录。
+同时安装 `/pds` 快捷命令（见下方“跨平台 commands”）。目标：`claude` / `codex` / `cursor` / `both`（默认，Claude+Codex）/ `all`（再加 Cursor）。
 不支持 Skill 的工具（DeepSeek 等）：把 `templates/AGENTS.snippet.md` 加进项目 AGENTS.md，提示词首行写“先读 AGENTS.md”。
 
 ## 三个角色怎么用
@@ -51,12 +52,32 @@ node scripts/pd.mjs skills  <项目根>          # 检查外部 Skill，缺失�
 node scripts/self-test.mjs                     # 自测
 ```
 
+## 跨平台 commands：`/pds`
+`/pds <意图>` 是 product-development 的薄封装（`templates/commands/pds.md`；Cursor 版 `templates/commands/cursor/pds.md`），只负责“加载并遵循 Skill + 把意图传进去”，不另立规则。
+
+| 工具 | 怎么输入 | 装到哪（依据官方文档） |
+|---|---|---|
+| Claude Code | `/pds 规划`；Skill 本身也能 `/product-development` | `~/.claude/commands/pds.md`（设了 `CLAUDE_CONFIG_DIR` 则在其下 `commands/`）——[code.claude.com/docs/en/slash-commands](https://code.claude.com/docs/en/slash-commands)：commands 已并入 skills，`.claude/commands/x.md` 与 skill 都生成 `/x`，支持 `$ARGUMENTS` |
+| Codex CLI / IDE | `/prompts:pds 执行 T140-05`；Skill 用 `$product-development` | `~/.codex/prompts/pds.md`（设了 `CODEX_HOME` 则在其下 `prompts/`）——[developers.openai.com/codex/custom-prompts](https://developers.openai.com/codex/custom-prompts)：custom prompts 已标 deprecated（推荐 skills），仍支持 `$ARGUMENTS`，改后需重启 Codex |
+| Cursor | `/pds 体检`；Skill 也能 `/product-development` | `~/.cursor/commands/pds.md`（项目级 `.cursor/commands/`）——[cursor.com/changelog/1-6](https://cursor.com/changelog/1-6)、Commands 文档；Skill 从 `~/.agents/skills` 自动加载（[cursor.com/help/customization/skills](https://cursor.com/help/customization/skills)）。Cursor 未定义参数占位符，命令读 `/pds` 后的文字 |
+
+| 子命令 | 含义 |
+|---|---|
+| `/pds 规划` | PLAN：全量规划剩余任务（无 config 时先 BOOTSTRAP） |
+| `/pds 执行 T140-05` | EXECUTE：按任务卡实现 + 定向测试 + 提交推送留痕 |
+| `/pds 体检 [T140]` | PHASE_REVIEW：只体检本阶段改到的模块 |
+| `/pds 状态` | STATUS：大白话进度 |
+| `/pds 重规划` | REPLAN：按证据修订规划，先列影响清单 |
+| `/pds 讨论 X` / `/pds 记录 X` | DISCUSS / RECORD |
+
+安装行为：内容相同跳过；已有**不同**的 `pds.md` 默认不动，加 `--force` / `-Force` 先备份为 `pds.md.bak.<时间>` 再覆盖；`--no-commands` / `-NoCommands` 只装 Skill；`--dir` 模式下需另给 `--commands-dir`（如 `--dir .claude/skills --commands-dir .claude/commands` 做项目级安装）。安装器暂无卸载：删掉对应 `pds.md` 即可。
+
 ## 跨平台（Windows / Ubuntu / macOS）
 需要 **Node.js 18+**（`node --version`）和 Git（Windows 用 Git for Windows）。`pd.mjs` 零依赖、只调用 `git`，不经过 shell，PowerShell、cmd、Git Bash、bash 都能直接跑。
 
 | 做什么 | PowerShell / cmd（Windows） | bash（Ubuntu / macOS / Git Bash） |
 |---|---|---|
-| 安装 | `.\scripts\install.ps1 -Target Both`（cmd：`scripts\install.cmd both`） | `bash scripts/install.sh both` |
+| 安装 | `.\scripts\install.ps1 -Target Both`（cmd：`scripts\install.cmd both`；加 Cursor 用 `All` / `all`） | `bash scripts/install.sh both`（加 Cursor：`all`） |
 | 覆盖安装 / 指定目录 | `.\scripts\install.ps1 -Force -Dir D:\skills` | `bash scripts/install.sh --force --dir ~/skills` |
 | 体检 | `node scripts\pd.mjs health .` | `node scripts/pd.mjs health .` |
 | 登记定向测试 | `node scripts\pd.mjs record . --task T001-02 --event TEST_RUN --cmd 'npm test -- price' --paths 'src/price.js,test/price.test.js' --result PASS` | 同左（`\` 换成 `/`） |

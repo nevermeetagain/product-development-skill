@@ -3,7 +3,7 @@ name: product-development
 description: 统一的 AI 产品开发工作流：产品讨论、决策固化、一次性全量规划、执行前细化、多助手执行、专职测试与测试复用、规划更新与裁决、Git 交接。用于“和我讨论/记录决定/规划全部剩余任务/执行某张任务卡/验收或体检/重新规划/汇报进度”等请求。核心：有据可依，行为留痕。
 ---
 
-# Product Development：统一产品开发工作流（v0.4.2）
+# Product Development：统一产品开发工作流（v0.4.3）
 
 一个入口，按意图和项目状态选择**最小且足够**的流程。不要每次把所有阶段走一遍。
 本 Skill 是工作规范；文件、终端、Git、网络权限取决于当前工具。随包脚本 `scripts/pd.mjs` 做确定性检查（体检、选下一任务、生成提示词、留痕、测试复用判断）。
@@ -21,6 +21,17 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - 写入任务索引/台账/日志的路径一律用 `/`；脚本会把 `\` 归一。不要手写反斜杠路径进 JSON。
 - `--cmd` 只是**登记**实际执行过的命令原文，脚本不会代为执行；命令先在当前终端真实跑通再登记。PowerShell 5.1 里命令本身含双引号时，外层用单引号。
 - Windows 下中文输出被管道/变量捕获出现乱码时，先 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`。详见 `references/config-reference.md`。
+
+## 跨平台 commands：`/pds` 快捷入口
+安装器会把薄封装 `templates/commands/pds.md` 一并装好，`/pds <意图>` = “用 product-development Skill 做这件事”：
+
+| 工具 | 输入 | 安装位置（官方文档） |
+|---|---|---|
+| Claude Code | `/pds 执行 T140-05`（也可直接 `/product-development …`） | `~/.claude/commands/pds.md`（或 `CLAUDE_CONFIG_DIR\commands`）；项目级 `.claude/commands/` |
+| Codex CLI / IDE | `/prompts:pds 执行 T140-05`（Skill 本身用 `$product-development`） | `~/.codex/prompts/pds.md`（或 `CODEX_HOME\prompts`）；官方已标记 custom prompts 为 deprecated，仍可用 |
+| Cursor | `/pds 执行 T140-05`（Skill 也可 `/product-development`） | `~/.cursor/commands/pds.md`；项目级 `.cursor/commands/`；Skill 从 `~/.agents/skills` 自动加载 |
+
+子命令：`规划`（PLAN）、`执行 <任务ID>`（EXECUTE）、`体检 [阶段]`（PHASE_REVIEW）、`状态`（STATUS）、`重规划`（REPLAN）、`讨论/记录 …`；其他文字按第 2 节识别。Claude/Codex 版用 `$ARGUMENTS` 接参数，Cursor 无官方参数占位符，读 `/pds` 后的文字。安装：`install.sh all` / `install.ps1 -Target All`（`both` 不含 Cursor），`--no-commands` / `-NoCommands` 跳过。
 
 ## 0. 四条底线（任何模式、任何角色）
 

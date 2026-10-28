@@ -342,5 +342,39 @@ console.log('15. 状态汇报');
 r = run(d, 'status', '.');
 ok('大白话汇总可输出', r.status === 0 && /待裁决决策：DEC-002/.test(r.stdout), r.stdout);
 
+console.log('16. /pds 快捷命令（跨工具 commands）');
+{
+  const root = path.join(here, '..');
+  const tStd = path.join(root, 'templates', 'commands', 'pds.md');
+  const tCur = path.join(root, 'templates', 'commands', 'cursor', 'pds.md');
+  const std = fs.existsSync(tStd) ? fs.readFileSync(tStd, 'utf8') : '';
+  const cur = fs.existsSync(tCur) ? fs.readFileSync(tCur, 'utf8') : '';
+  ok('pds.md 模板存在（Claude/Codex 版 + Cursor 版）', std !== '' && cur !== '');
+  ok('Claude/Codex 版有 frontmatter description/argument-hint 并传 $ARGUMENTS', /^---\n[\s\S]*?description:[\s\S]*?argument-hint:[\s\S]*?\n---\n/.test(std) && std.includes('$ARGUMENTS'), std.slice(0, 300));
+  const toks = (std.match(/\$[A-Za-z0-9_]+/g) || []).filter((t) => t !== '$ARGUMENTS');
+  ok('不含其他 $占位符（Codex 会把 $大写词 当命名参数、Claude 会替换 $数字）', toks.length === 0, toks.join(','));
+  ok('Cursor 版不依赖 $ARGUMENTS（官方未定义参数占位符）', !cur.includes('$'), cur.slice(0, 200));
+  ok('两版都指向 product-development 并列出子命令', [std, cur].every((t) => /product-development/.test(t) && ['规划', '执行 <任务ID>', '体检', '状态', '重规划'].every((k) => t.includes(k))));
+  const h2 = fs.mkdtempSync(path.join(os.tmpdir(), 'pd-cmdhome-'));
+  const env = { ...process.env, HOME: h2, USERPROFILE: h2 }; delete env.CLAUDE_CONFIG_DIR; delete env.CODEX_HOME;
+  const isWin = process.platform === 'win32';
+  const inst = (...a) => isWin
+    ? spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(here, 'install.ps1'), ...a.map((x) => ({ all: 'All', '--force': '-Force' }[x] || x))], { env, encoding: 'utf8' })
+    : spawnSync('bash', [path.join(here, 'install.sh'), ...a], { env, encoding: 'utf8' });
+  let ir = inst('all');
+  if (ir.error) { console.log(`  - 跳过安装检查：找不到 ${isWin ? 'powershell' : 'bash'}`); } else {
+    const dests = { claude: path.join(h2, '.claude', 'commands', 'pds.md'), codex: path.join(h2, '.codex', 'prompts', 'pds.md'), cursor: path.join(h2, '.cursor', 'commands', 'pds.md') };
+    const same = (a, b) => fs.existsSync(a) && fs.readFileSync(a).equals(fs.readFileSync(b));
+    ok('all：Skill 装到 .claude/skills 与 .agents/skills', ir.status === 0 && fs.existsSync(path.join(h2, '.claude', 'skills', 'product-development', 'SKILL.md')) && fs.existsSync(path.join(h2, '.agents', 'skills', 'product-development', 'SKILL.md')), ir.stdout + ir.stderr);
+    ok('all：pds.md 装到 ~/.claude/commands、~/.codex/prompts、~/.cursor/commands（内容与模板一致）', same(dests.claude, tStd) && same(dests.codex, tStd) && same(dests.cursor, tCur), ir.stdout + ir.stderr);
+    fs.writeFileSync(dests.codex, 'my own pds\n');
+    ir = inst('codex');
+    ok('已存在不同的 pds.md 时不加 force 不覆盖', ir.status === 0 && fs.readFileSync(dests.codex, 'utf8') === 'my own pds\n', ir.stdout + ir.stderr);
+    ir = inst('codex', '--force');
+    const baks = fs.readdirSync(path.dirname(dests.codex)).filter((f) => f.startsWith('pds.md.bak.'));
+    ok('加 force 时先备份再覆盖', ir.status === 0 && same(dests.codex, tStd) && baks.length === 1 && fs.readFileSync(path.join(path.dirname(dests.codex), baks[0]), 'utf8') === 'my own pds\n', ir.stdout + ir.stderr + baks.join(','));
+  }
+}
+
 console.log(`\n结果：${pass} 通过，${fail} 失败`);
 process.exitCode = fail ? 1 : 0;

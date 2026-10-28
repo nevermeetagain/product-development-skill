@@ -40,6 +40,18 @@ jobs:
           HOME="$RUNNER_TEMP/pd-home" bash scripts/install.sh both
           test -f "$RUNNER_TEMP/pd-home/.claude/skills/product-development/scripts/pd.mjs"
           test -f "$RUNNER_TEMP/pd-home/.agents/skills/product-development/scripts/pd.mjs"
+          # /pds：both → Claude commands + Codex prompts；all 追加 Cursor commands
+          cmp templates/commands/pds.md "$RUNNER_TEMP/pd-home/.claude/commands/pds.md"
+          cmp templates/commands/pds.md "$RUNNER_TEMP/pd-home/.codex/prompts/pds.md"
+          test ! -e "$RUNNER_TEMP/pd-home/.cursor/commands/pds.md"
+          HOME="$RUNNER_TEMP/pd-home" bash scripts/install.sh all
+          cmp templates/commands/cursor/pds.md "$RUNNER_TEMP/pd-home/.cursor/commands/pds.md"
+          echo custom > "$RUNNER_TEMP/pd-home/.claude/commands/pds.md"
+          HOME="$RUNNER_TEMP/pd-home" bash scripts/install.sh claude --force
+          cmp templates/commands/pds.md "$RUNNER_TEMP/pd-home/.claude/commands/pds.md"
+          ls "$RUNNER_TEMP/pd-home/.claude/commands/" | grep -q '^pds\.md\.bak\.'
+          bash scripts/install.sh claude --dir "$RUNNER_TEMP/proj/.claude/skills" --commands-dir "$RUNNER_TEMP/proj/.claude/commands"
+          cmp templates/commands/pds.md "$RUNNER_TEMP/proj/.claude/commands/pds.md"
           node "$dest/product-development/scripts/pd.mjs" skills "$RUNNER_TEMP"
       - name: PowerShell installer (Windows PowerShell 5.1)
         if: runner.os == 'Windows'
@@ -58,6 +70,22 @@ jobs:
             $f = Join-Path $env:USERPROFILE "$b\skills\product-development\scripts\pd.mjs"
             if (-not (Test-Path $f)) { throw "missing $f" }
           }
+          # /pds：Both → Claude commands + Codex prompts（内容与模板一致）；All 追加 Cursor
+          $std = (Get-FileHash 'templates\commands\pds.md').Hash
+          foreach ($c in '.claude\commands\pds.md', '.codex\prompts\pds.md') {
+            $f = Join-Path $env:USERPROFILE $c
+            if (-not (Test-Path $f)) { throw "missing $f" }
+            if ((Get-FileHash $f).Hash -ne $std) { throw "content mismatch $f" }
+          }
+          .\scripts\install.ps1 -Target All
+          $cf = Join-Path $env:USERPROFILE '.cursor\commands\pds.md'
+          if ((Get-FileHash $cf).Hash -ne (Get-FileHash 'templates\commands\cursor\pds.md').Hash) { throw 'cursor pds.md missing or mismatch' }
+          Set-Content -Path (Join-Path $env:USERPROFILE '.codex\prompts\pds.md') -Value 'custom'
+          .\scripts\install.ps1 -Target Codex
+          if ((Get-Content (Join-Path $env:USERPROFILE '.codex\prompts\pds.md') -Raw).Trim() -ne 'custom') { throw 'overwrote custom pds.md without -Force' }
+          .\scripts\install.ps1 -Target Codex -Force
+          if ((Get-FileHash (Join-Path $env:USERPROFILE '.codex\prompts\pds.md')).Hash -ne $std) { throw '-Force did not update pds.md' }
+          if (-not (Get-ChildItem (Join-Path $env:USERPROFILE '.codex\prompts') -Filter 'pds.md.bak.*')) { throw 'no backup of custom pds.md' }
           node (Join-Path $dest 'product-development\scripts\pd.mjs') skills $env:RUNNER_TEMP
           if ($LASTEXITCODE -ne 0) { throw "pd.mjs skills exit $LASTEXITCODE" }
       - name: PowerShell 7 + cmd shim (Windows)
@@ -70,3 +98,11 @@ jobs:
           cmd /c "scripts\install.cmd both --dir `"$env:RUNNER_TEMP\pd-skills-cmd`""
           if ($LASTEXITCODE -ne 0) { throw "install.cmd exit $LASTEXITCODE" }
           if (-not (Test-Path (Join-Path $env:RUNNER_TEMP 'pd-skills-cmd/product-development/SKILL.md'))) { throw 'cmd shim install failed' }
+          cmd /c "scripts\install.cmd cursor --dir `"$env:RUNNER_TEMP\pd-cmd2\skills`" --commands-dir `"$env:RUNNER_TEMP\pd-cmd2\commands`""
+          if ($LASTEXITCODE -ne 0) { throw "install.cmd (commands) exit $LASTEXITCODE" }
+          $f = Join-Path $env:RUNNER_TEMP 'pd-cmd2/commands/pds.md'
+          if ((Get-FileHash $f).Hash -ne (Get-FileHash 'templates/commands/cursor/pds.md').Hash) { throw 'cmd shim pds.md missing or mismatch' }
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'pd-home7'
+          New-Item -ItemType Directory -Force $env:USERPROFILE | Out-Null
+          cmd /c "scripts\install.cmd all"
+          foreach ($c in '.claude/commands/pds.md', '.codex/prompts/pds.md', '.cursor/commands/pds.md') { if (-not (Test-Path (Join-Path $env:USERPROFILE $c))) { throw "cmd all: missing $c" } }
