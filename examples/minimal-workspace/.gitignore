@@ -1,0 +1,9 @@
+node_modules/
+.local/
+.env
+.env*
+!.env.example
+*.dump
+*_dump.sql
+dump*.sql
+*.sql.gz

@@ -1,0 +1,12 @@
+# 跨平台换行：仓库与工作区统一 LF（脚本哈希、Markdown 表格回写、self-test 在 Windows 上一致）
+* text=auto eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+# Windows 原生脚本用 CRLF
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

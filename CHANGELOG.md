@@ -1,0 +1,76 @@
+# 变更记录
+
+## 0.4.3（2026-10-28）
+
+新增 `/pds` 快捷命令（跨平台 commands）：
+- `templates/commands/pds.md`（Claude Code / Codex：frontmatter `description`、`argument-hint`，`$ARGUMENTS` 作为意图）与 `templates/commands/cursor/pds.md`（Cursor 无官方参数占位符，读 `/pds` 后的文字）；薄封装，只做“加载并遵循 product-development Skill + 传意图”，列出 规划 / 执行 <任务ID> / 体检 / 状态 / 重规划 / 讨论 / 记录 的含义。
+- 位置均按官方文档核实：Claude Code `~/.claude/commands/`（commands 已并入 skills，Skill 也可 `/product-development`）；Codex `~/.codex/prompts/`（`/prompts:pds`，官方标 deprecated 仍可用；尊重 `CODEX_HOME`）；Cursor `~/.cursor/commands/`（Skill 从 `~/.agents/skills` 自动加载）。
+- `install.sh` / `install.ps1` / `install.cmd` / `install-user.ps1`：新增目标 `cursor`、`all`（`both` 仍为 Claude+Codex），随 Skill 安装 `pds.md`；内容相同跳过，已有不同文件默认不覆盖，`--force`/`-Force` 先备份为 `pds.md.bak.<时间>`；新增 `--no-commands`/`-NoCommands`、`--commands-dir`/`-CommandsDir`（`--dir` 模式需显式给出）；`install.ps1` 比较文件用 `[IO.File]::ReadAllBytes` 而非 `Get-FileHash`（CI 发现：从 pwsh 7 启动 Windows PowerShell 5.1 时继承的 PSModulePath 让 `Get-FileHash` 无法加载）。安装器原本无卸载，本版未新增（删 `pds.md` 即可）。
+- 文档：README、SKILL.md 新增“跨平台 commands”节，`tool-compatibility.md` 补 Cursor 与 `/pds` 表。
+- 自测 88 项（新增 9 项：模板结构、占位符安全、Cursor 版无 `$`、all 安装位置与内容、不覆盖/备份覆盖）；CI 在 Ubuntu（bash）与 Windows（PowerShell 5.1 / 7 / cmd）上断言 `pds.md` 安装到位。
+
+## 0.4.2（2026-10-28）
+
+跨平台兼容（Windows PowerShell/cmd/Git Bash + Ubuntu），并在 GitHub Actions 真实 runner 上验证：
+- 路径：台账/索引/日志里存的路径统一为 POSIX（`toPosix`/`pathList`），`--paths 'src\a.js'` 自动转 `src/a.js`；config 里写反斜杠也能读；显示用相对路径统一 `/`；`scan` 在 Windows 上的规则匹配修正。
+- 指纹：路径先归一再排序，继续用 Git 对象哈希（与 CRLF/`core.autocrlf` 无关）；覆盖路径在 HEAD 不存在（未提交/大小写不一致）时提醒。
+- 文本：读 JSON/Markdown 去 UTF-8 BOM、容忍 CRLF；Markdown 表格与 JSON 写回保持原换行和 BOM；台账/索引改为临时文件 + rename 原子写，Windows 上 EPERM/EBUSY 退避重试。
+- Git：固定 `core.quotepath=false`（中文路径不再被转义，防泄露守卫能识别中文目录下的导出文件）；`windowsHide`；找不到 git 时 `health` 明确提醒。
+- `pd.mjs skills`：修复 Windows 上 `URL.pathname` 得到 `/C:/…` 导致找不到登记表；`~` 用 `os.homedir()`；支持 `%VAR%`/`$VAR`/`${VAR}`、`*`/`**` 通配、`cmd:<名>` 按 PATH/PATHEXT 查找（替代无法生效的 `$(command -v …)`）、`CLAUDE_CONFIG_DIR`/`CODEX_HOME`；Windows 上输出 `generic_install_windows` 的 PowerShell 命令。
+- 入口：Node < 18 直接报错；`scan`/`skills` 不再 `process.exit`（避免 Windows 控制台输出被截断）。
+- 安装：新增 `install.ps1`（PowerShell 5.1/7，UTF-8 BOM + CRLF，`-Target -Force -Dir`）与 `install.cmd`（cmd 转调；在 `shift` 前保存脚本目录——CI 发现 `shift` 会移动 `%0` 导致找不到 install.ps1）；`install.sh` 增加 `--dir`、支持 `CLAUDE_CONFIG_DIR`，二者都只复制 Skill 文件（此前 `install.sh` 会把 `.git` 一并复制）；`install-user.ps1` 保留为旧入口。
+- 新增 `.gitattributes`（md/json/mjs/js/sh/yml 为 LF，ps1/cmd/bat 为 CRLF）。
+- 文档：README、SKILL.md 新增“跨平台”节（PowerShell 与 bash 对照）；`config-reference.md` 新增“Windows 注意事项”；`&&` 写法补 PowerShell 5.1 分条说明；代理配置补 bash；明确 `--cmd` 只登记不执行。
+- 新增 `.github/workflows/self-test.yml`：ubuntu-latest + windows-latest × Node 18/22 跑自测，并在 Windows 上跑 PowerShell 5.1/7 与 cmd 安装器、在 Ubuntu 上跑 bash 安装器（一次性兼容检查，不作为门禁）。
+- 自测 79 项全过（新增 22 项：路径归一、CRLF/BOM、autocrlf 指纹、大小写、中文路径、检测路径展开、平台安装命令）。
+
+## 0.4.1（2026-10-28）
+
+按 r4 结构评测修复 `project-structure`：
+- 维度口径统一为 **16 个核心维度 + 安全、测试 2 个横切项**（新增“后台任务与调度”）：lean 用 `src/jobs/`；standard 任务是 API app 的第二入口（`apps/api/src/jobs` + `bootstrap/scheduler`）；仅 full 且需独立伸缩时拆 `apps/worker`。
+- Next.js + Node 栈：server components / route handlers 只经 typed client 调 API，禁止直连 DB/ORM（加入守卫）。
+- Prisma 统一 `apps/api/prisma`（schema + migrations），删去根 `database/`；repositories 在 infrastructure；新增 `UnitOfWork` 事务端口，ORM 类型不出 infrastructure。
+- config 新增可选键 `project_structure`、`contracts`、`migrations`（config-reference、doc-system、config.example）；旧 config 无需修改。
+- ★ = T000-01 后必须存在（真实文件或 `.gitkeep`），非 ★ 首次用到再建；lean 无持久 schema 不建迁移目录；纯前端首刀切片 = UI→状态→存储适配器；模板分 standard/lean 变体。
+- 已有项目：沿用已有 ADR 系列/结构文档（config 指向），探测真实入口，不假设 `apps/api`，补全栈 Next 映射。
+- 后端 i18n（邮件模板、locale 路由）与事件载荷位置（`packages/contracts/<域>/events` 或 `apps/api/src/contracts/events`）。
+- `.gitignore` 增加 `.env*`、`*.dump`、`*_dump.sql`、`dump*.sql`、`*.sql.gz`，加入守卫清单；`pd.mjs health` 对 Git 跟踪的 `.env` 实值/数据导出报错、`.gitignore` 缺规则提醒（迁移 `.sql`、`.env.example` 不误报）。
+- 自测 57 项全过（新增 5 项）。
+
+## 0.4.0（2026-10-28）
+
+- 新增 `references/execution-playbooks.md`：开工前五项置信度自评、一次问完；固定收尾（定向测试→提交→推送→同步核对→留痕）；后端/API、业务逻辑、数据与迁移、交互、前端、集成与异步、性能七类执行手册。
+- 规划者主动更新：`pd.mjs replan-check` 自动找出阶段完成未体检、体检完成未复盘、待裁决阻塞、失败卡、测试 FAIL、决策被替代/缺失、依赖被替代、基线过旧、流水线停摆，并生成规划者提示词；复盘写入 `replans[]`。
+- 推送并同步成为完成的必要步骤：`pd.mjs sync --task <ID> --push`（fetch→必要时 rebase→push→核对远程包含本提交）；没真推送就写 PUSHED 会被拒绝；失败自动记 PUSH_FAILED。
+- “讨论过的不再问”：`pd.mjs ask-check` 提问前检索决策登记册和任务卡，命中 DECIDED 返回退出码 5。
+- 外部 Skill 自动安装：`templates/skills-registry.json`（21 项，均为已打开核实的官方仓库）+ `pd.mjs skills` 检测并输出安装命令，交给 IDE/CLI 自己装；失败不阻塞。
+- 按 v0.3 评测修复：Markdown 决策台账读全部表格、支持多来源（总台账 + 本版待裁决清单），Aidean 上正确识别 7 条 Q-14 待裁决；前置未完成的卡不能标 DONE/VERIFIED；`record TEST_RUN --cmd --paths --result` 直接进测试台账供阶段体检复用；明确“代码提交 + 留痕提交”；示例去掉占位提交号并补 `test/run-all.js`；新增 `references/config-reference.md`；小需求快速通道。
+- 按 v0.4 评测修复：ask-check 改为按命中比例判断、Markdown 台账只看本行，未决项明确提示等待裁决；有远程时未推送不能标 DONE；推送失败保留 git 报错原文，status 显示未同步卡；分支模式下游卡需前置提交合入 main，`sync --merge` 快进合并；`baseline_commit` 字段统一；replan-check 去重，产品类未决项归用户裁决；规则优先级、上报对象、模板不适用节直接删。
+- 新增架构师级目录体系：`references/project-structure.md` + `templates/project-structure.md`（提炼自用户提供的《项目完整目录结构》《项目完整文档体系》），PLAN 增加 STRUCTURE 步：从需求、前端、后端、数据、交互、逻辑、组件、复用、拓展、性能、配置、知识库、响应、存储、资源 15 个维度做结构决策，登记到 config，第一刀 T000-01 建骨架与边界守卫；老项目只映射、增量迁移。
+- 自测 52 项全过。
+
+## 0.3.0（2026-10-28）
+
+- 吸收用户的《项目规划指令》《多方案评审标准》《项目完整文档体系》《5W1H+钢人论证》：新增 `planner-protocol.md`、`solution-review.md`、`doc-system.md`，SKILL.md 新增十条准则（执行者测试、MUST 可验证、契约冻结、垂直切片、风险分级的深度推理、两次失败即停等）；删去与效率原则冲突的每卡门禁、凑方案和“100%”式表述。
+- 新增外部 Skill 路由（superpowers、OpenSpec、GSD、planning-with-files、frontend-design、ui-ux-pro-max、web-design-guidelines、Remotion、HyperFrames、doc-coauthoring、code-simplifier、Code Review）：装了就用，没装不阻塞。
+- 脚本 v0.3：`scan` 只读盘点；Markdown 表格任务索引/决策台账兼容（中文状态映射，只改目标单元格）；`prompt` 拒绝未就绪卡（exit 4）；`record` 校验事件白名单、真实提交、BLOCKED 结构化上报（needs/escalate/options/recommend）、`PUSH_FAILED`、`CORRECTION`；DONE 必须有提交或无变化理由，VERIFIED 必须有台账 PASS；参数缺值直接报错；ISO UTC 时间；`test-record` 支持 `--reused-from`（指纹变化拒绝复用），PASS 必须写实际命令；`test-plan` 排除测试卡本身、识别上次失败；决策不在登记册视为阻塞；health 校验提交真实存在、`superseded_by`、多目录 ADR。
+- 自测扩充到 37 项；在 Aidean V0.14.0 真实索引上验证（16 卡 / 8 完成 / 1 阻塞 / 下一张 T140-05，与人工盘点一致）。
+
+## 0.2.0（2026-10-28，Hark 测试优化版）
+基于 0.1.0（ChatGPT 起草）、Claude 评审意见、用户补充要求和 Aidean/AideanThesis 实际执行教训。
+
+新增
+- 角色分工：规划者 / 执行助手 / **测试助手** / 用户；门禁、阶段体检、回归全部归测试助手（用户补充 1）。
+- **测试台账 + 内容指纹复用**：`pd.mjs test-record` / `test-plan`，需求和代码未变的已通过测试原则上不重测（用户补充 2）。
+- **规划者主动职责与裁决链**：执行/测试 → 规划者裁决（落决策登记册）→ 仅产品/安全/数据/契约类交用户（用户补充 3）。
+- 留痕强化：执行日志 JSONL、决策 `decided_by`、`pd.mjs health` 校验 DONE 必须有提交、VERIFIED 必须有台账 PASS（用户补充 4）。
+- 模式风险分级与切换告知（Claude 建议）；状态精简为 7 态 + execution 追踪字段（Claude 建议）。
+- 任务 ID 永不改号、`legacy_ids`；跨版本**单一决策登记册**（来自 Aidean 多套编号的教训）。
+- 验收必须可判定（command / measure / manual+证据）；grep 源码冒充测试会被提醒（来自外部助手 17 卡复核教训）。
+- 性能/探索卡的继续条件与停止条件模板（来自 T140-30）。
+- 秘密扫描：PAT/Key 写进任务卡、日志、索引会被拦截。
+- 大白话汇报（`pd.mjs status`）。
+
+变更
+- 脚本合并为单一 CLI `scripts/pd.mjs`（health / next / prompt / record / test-plan / test-record / status），零依赖，Node 18+。
+- 0.1.0 README 引用但未随附的 references/templates/scripts 全部补齐。

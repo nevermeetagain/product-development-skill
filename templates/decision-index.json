@@ -1,0 +1,4 @@
+{ "decisions": [
+  { "id": "DEC-0001", "title": "<决策标题>", "status": "OPEN", "decided_by": null, "decided_at": null,
+    "file": "docs/decisions/DEC-0001.md", "applies_to": [], "legacy_ids": [], "supersedes": null, "superseded_by": null }
+] }

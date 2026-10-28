@@ -1,0 +1,542 @@
+[
+  {
+    "id": "superpowers/brainstorming",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "DISCUSS"
+    ],
+    "task_types": [
+      "general"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/brainstorming/SKILL.md",
+      ".agents/skills/brainstorming/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/writing-plans",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "PLAN"
+    ],
+    "task_types": [
+      "general"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/writing-plans/SKILL.md",
+      ".agents/skills/writing-plans/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/executing-plans",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "EXECUTE"
+    ],
+    "task_types": [
+      "general"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/executing-plans/SKILL.md",
+      ".agents/skills/executing-plans/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/test-driven-development",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "EXECUTE"
+    ],
+    "task_types": [
+      "logic",
+      "bugfix"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/test-driven-development/SKILL.md",
+      ".agents/skills/test-driven-development/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/systematic-debugging",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "EXECUTE"
+    ],
+    "task_types": [
+      "hard-bug"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/systematic-debugging/SKILL.md",
+      ".agents/skills/systematic-debugging/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/verification-before-completion",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "VALIDATE"
+    ],
+    "task_types": [
+      "general"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/verification-before-completion/SKILL.md",
+      ".agents/skills/verification-before-completion/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "superpowers/requesting-code-review",
+    "repo": "https://github.com/obra/superpowers",
+    "phases": [
+      "PHASE_REVIEW"
+    ],
+    "task_types": [
+      "code-review"
+    ],
+    "claude_code_install": [
+      "/plugin install superpowers@claude-plugins-official"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/superpowers/skills/* ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/superpowers",
+      "~/.agents/skills/requesting-code-review/SKILL.md",
+      ".agents/skills/requesting-code-review/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "openspec",
+    "repo": "https://github.com/Fission-AI/OpenSpec",
+    "phases": [
+      "DISCUSS",
+      "RECORD",
+      "PLAN",
+      "REPLAN"
+    ],
+    "task_types": [
+      "change-proposal",
+      "explore"
+    ],
+    "claude_code_install": [
+      "npm install -g @fission-ai/openspec@latest",
+      "openspec init"
+    ],
+    "generic_install": [
+      "npm install -g @fission-ai/openspec@latest",
+      "openspec init"
+    ],
+    "detect_paths": [
+      "cmd:openspec",
+      "openspec/"
+    ]
+  },
+  {
+    "id": "gsd-core",
+    "repo": "https://github.com/open-gsd/gsd-core",
+    "phases": [
+      "DISCUSS",
+      "PLAN",
+      "EXECUTE",
+      "VALIDATE",
+      "REPLAN"
+    ],
+    "task_types": [
+      "general",
+      "long-running"
+    ],
+    "claude_code_install": [
+      "npx @opengsd/gsd-core@latest --claude --global"
+    ],
+    "generic_install": [
+      "npx @opengsd/gsd-core@latest --codex --global"
+    ],
+    "detect_paths": [
+      "~/.claude/skills/gsd-*",
+      "~/.claude/commands/gsd-*",
+      "~/.codex/skills/gsd-*/SKILL.md"
+    ]
+  },
+  {
+    "id": "gsd-pi",
+    "repo": "https://github.com/open-gsd/gsd-pi",
+    "phases": [
+      "PLAN",
+      "EXECUTE",
+      "VALIDATE"
+    ],
+    "task_types": [
+      "standalone-cli"
+    ],
+    "claude_code_install": [
+      "npx @opengsd/gsd-pi@latest --yes"
+    ],
+    "generic_install": [
+      "npm install -g @opengsd/gsd-pi@latest"
+    ],
+    "detect_paths": [
+      "cmd:gsd",
+      "~/.gsd/"
+    ]
+  },
+  {
+    "id": "planning-with-files",
+    "repo": "https://github.com/OthmanAdi/planning-with-files",
+    "phases": [
+      "PLAN",
+      "EXECUTE"
+    ],
+    "task_types": [
+      "long-running",
+      "cross-session"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add OthmanAdi/planning-with-files",
+      "/plugin install planning-with-files@planning-with-files"
+    ],
+    "generic_install": [
+      "npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g"
+    ],
+    "detect_paths": [
+      "~/.agents/skills/planning-with-files/SKILL.md",
+      "~/.claude/plugins/**/planning-with-files",
+      ".agents/skills/planning-with-files/SKILL.md"
+    ]
+  },
+  {
+    "id": "anthropic/frontend-design",
+    "repo": "https://github.com/anthropics/skills",
+    "phases": [
+      "DISCUSS",
+      "PLAN",
+      "EXECUTE"
+    ],
+    "task_types": [
+      "frontend"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add anthropics/skills",
+      "/plugin install example-skills@anthropic-agent-skills"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git /tmp/anthropic-skills",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/anthropic-skills/skills/frontend-design ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/example-skills",
+      "~/.agents/skills/frontend-design/SKILL.md",
+      "~/.claude/skills/frontend-design/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\frontend-design\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "anthropic/doc-coauthoring",
+    "repo": "https://github.com/anthropics/skills",
+    "phases": [
+      "DISCUSS",
+      "RECORD"
+    ],
+    "task_types": [
+      "docs"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add anthropics/skills",
+      "/plugin install example-skills@anthropic-agent-skills"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git /tmp/anthropic-skills",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/anthropic-skills/skills/doc-coauthoring ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/example-skills",
+      "~/.agents/skills/doc-coauthoring/SKILL.md",
+      "~/.claude/skills/doc-coauthoring/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\doc-coauthoring\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "anthropic/webapp-testing",
+    "repo": "https://github.com/anthropics/skills",
+    "phases": [
+      "VALIDATE"
+    ],
+    "task_types": [
+      "frontend",
+      "web-app"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add anthropics/skills",
+      "/plugin install example-skills@anthropic-agent-skills"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git /tmp/anthropic-skills",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/anthropic-skills/skills/webapp-testing ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/example-skills",
+      "~/.agents/skills/webapp-testing/SKILL.md",
+      "~/.claude/skills/webapp-testing/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\webapp-testing\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "anthropic/skill-creator",
+    "repo": "https://github.com/anthropics/skills",
+    "phases": [
+      "META"
+    ],
+    "task_types": [
+      "skill-maintenance"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add anthropics/skills",
+      "/plugin install example-skills@anthropic-agent-skills"
+    ],
+    "generic_install": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git /tmp/anthropic-skills",
+      "mkdir -p ~/.agents/skills",
+      "cp -r /tmp/anthropic-skills/skills/skill-creator ~/.agents/skills/"
+    ],
+    "detect_paths": [
+      "~/.claude/plugins/**/example-skills",
+      "~/.agents/skills/skill-creator/SKILL.md",
+      "~/.claude/skills/skill-creator/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\skill-creator\" \"$HOME\\.agents\\skills\\\""
+    ]
+  },
+  {
+    "id": "code-simplifier",
+    "repo": "https://github.com/anthropics/claude-plugins-official",
+    "phases": [
+      "EXECUTE"
+    ],
+    "task_types": [
+      "cleanup"
+    ],
+    "claude_code_install": [
+      "/plugin install code-simplifier@claude-plugins-official"
+    ],
+    "generic_install": [],
+    "detect_paths": [
+      "~/.claude/plugins/**/code-simplifier"
+    ]
+  },
+  {
+    "id": "code-review",
+    "repo": "https://github.com/anthropics/claude-plugins-official",
+    "phases": [
+      "PHASE_REVIEW"
+    ],
+    "task_types": [
+      "code-review"
+    ],
+    "claude_code_install": [
+      "/plugin install code-review@claude-plugins-official"
+    ],
+    "generic_install": [],
+    "detect_paths": [
+      "~/.claude/plugins/**/code-review"
+    ]
+  },
+  {
+    "id": "ui-ux-pro-max",
+    "repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+    "phases": [
+      "DISCUSS",
+      "PLAN",
+      "EXECUTE"
+    ],
+    "task_types": [
+      "frontend"
+    ],
+    "claude_code_install": [
+      "/plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill",
+      "/plugin install ui-ux-pro-max@ui-ux-pro-max-skill"
+    ],
+    "generic_install": [
+      "npm install -g ui-ux-pro-max-cli",
+      "uipro init --ai codex"
+    ],
+    "detect_paths": [
+      ".claude/skills/ui-ux-pro-max/",
+      ".agents/skills/ui-ux-pro-max/",
+      "~/.claude/skills/ui-ux-pro-max/",
+      "~/.agents/skills/ui-ux-pro-max/"
+    ]
+  },
+  {
+    "id": "web-design-guidelines",
+    "repo": "https://github.com/vercel-labs/agent-skills",
+    "phases": [
+      "VALIDATE",
+      "PHASE_REVIEW"
+    ],
+    "task_types": [
+      "frontend",
+      "ui-audit"
+    ],
+    "claude_code_install": [
+      "npx skills add vercel-labs/agent-skills --skill web-design-guidelines"
+    ],
+    "generic_install": [
+      "npx skills add vercel-labs/agent-skills --skill web-design-guidelines -g"
+    ],
+    "detect_paths": [
+      "~/.agents/skills/web-design-guidelines/SKILL.md",
+      "~/.claude/skills/web-design-guidelines/SKILL.md"
+    ]
+  },
+  {
+    "id": "remotion",
+    "repo": "https://github.com/remotion-dev/skills",
+    "phases": [
+      "EXECUTE"
+    ],
+    "task_types": [
+      "video-react"
+    ],
+    "claude_code_install": [
+      "npx skills add remotion-dev/skills"
+    ],
+    "generic_install": [
+      "npx skills add remotion-dev/skills"
+    ],
+    "detect_paths": [
+      "~/.agents/skills/remotion-best-practices/SKILL.md",
+      "~/.claude/skills/remotion-best-practices/SKILL.md"
+    ]
+  },
+  {
+    "id": "hyperframes",
+    "repo": "https://github.com/heygen-com/hyperframes",
+    "phases": [
+      "EXECUTE",
+      "VALIDATE"
+    ],
+    "task_types": [
+      "video-html"
+    ],
+    "claude_code_install": [
+      "claude plugin marketplace add heygen-com/hyperframes",
+      "claude plugin install hyperframes@hyperframes"
+    ],
+    "generic_install": [
+      "npx hyperframes skills update"
+    ],
+    "detect_paths": [
+      "~/.agents/skills/hyperframes/SKILL.md",
+      "~/.claude/plugins/**/hyperframes",
+      "~/.claude/skills/hyperframes/SKILL.md"
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+## AI 开发工作协议（product-development v0.4.3）
+- 权威路径：`.product-development/config.json`。只在映射位置读写决策、任务、测试台账、执行日志；不另起第二份。
+- 先查后问：提问前跑 `pd.mjs ask-check . "关键词"`；命中 DECIDED 照做、不再问用户；查不到先交规划者裁决，规划者无权决定的（产品方向/范围/安全/数据不可逆/公共契约）才问用户。“记录在案”= 已写入决策登记册并有编号。
+- 开工前自评：对需求清晰度、决策覆盖、契约完整度、依赖状态、测试路径打高/中/低置信度；遗漏、疑问、缺失、异常一次列全，在编码前提出。BLOCKED 只暂停本卡。
+- 角色：规划者（规划、主动更新、裁决，每次会话先跑 `pd.mjs replan-check`）/ 执行助手（实现 + 定向测试 + 提交 + 推送同步）/ 测试助手（门禁、阶段体检、回归、测试台账）。
+- 测试：执行助手只跑改动相关的定向测试并用 `record --event TEST_RUN --cmd --paths --result` 登记；阶段体检、全量回归归测试助手；需求和代码未变的已通过测试不重测（`pd.mjs test-plan`）。
+- 收尾顺序固定：定向测试 → 本卡代码提交 → `pd.mjs sync . --task <ID> --push`（推送并核对远程一致）→ `record DONE` → 留痕提交 + 再次 sync → `pd.mjs next` 输出下一张卡提示词。
+- Git：独立 clone，fetch+rebase，禁止 force push；凭据用本机 Git Credential Manager/gh，代理用本机 git config；PAT、密码、代理账号不写进任何文件、日志、提示词。
+- 外部 Skill：`pd.mjs skills` 检测，缺失则按给出的官方仓库地址自行安装；装不上不阻塞，按内置步骤继续。
+- 跨平台：Windows（PowerShell/cmd/Git Bash）与 Linux 命令相同，`node <skill>/scripts/pd.mjs …`；写入台账/索引的路径用 `/`；PowerShell 5.1 不支持 `&&`，分条执行；`--cmd` 只登记真实跑过的命令。
+- 任务 ID 永不改号；同一张卡失败两次就停手上报；完成一卡后停止并用大白话回报。
