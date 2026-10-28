@@ -27,6 +27,11 @@ jobs:
           git config --show-origin --get core.autocrlf || true
       - name: Self-test
         run: node scripts/self-test.mjs
+      - name: Quality smoke (real npx, one-time cross-platform check)
+        shell: bash
+        run: |
+          node scripts/pd.mjs quality examples/minimal-workspace --no-record --mutation --test-cmd "node test/run-all.js"
+          node -e "const s=JSON.parse(require('fs').readFileSync('examples/minimal-workspace/.metrics/pd-quality-latest.json','utf8'));const g=s.signals;for(const k of Object.keys(g))console.log(k,g[k].status,g[k].tool||'',g[k].reason||'');if(g.crap.status!=='OK'||g.duplication.status!=='OK')process.exit(1)"
       - name: Bash installer (Ubuntu)
         if: runner.os != 'Windows'
         shell: bash

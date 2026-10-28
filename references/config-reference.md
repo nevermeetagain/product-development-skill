@@ -21,6 +21,11 @@
 | `git.task_branch_pattern` | 否 | 默认 `task/{id}` |
 | `replan.max_commits_since_baseline` | 否 | 距规划基线多少个提交提示重做快照，默认 30 |
 | `formats.task_index` | 否 | 老项目 Markdown 表格：`columns`（id/title/depends_on/status/phase/owner/condition 对应的中文表头）、`status_map`（中文状态前缀→标准状态）、`status_write`（写回模板，支持 `{commit}` `{reason}`）、`cards_dir`、`plan_version` |
+| `quality.test_command` | 否 | `pd.mjs quality` 采集覆盖率时跑的定向测试命令（经 shell，设 `NODE_V8_COVERAGE` 后由 c8 出报告）；`--test-cmd` 优先。不填且无报告 → CRAP 记 UNKNOWN |
+| `quality.coverage_report` | 否 | 现成覆盖率报告（istanbul `coverage-final.json` 或 `lcov.info`，任何语言的 lcov 都可）；默认自动找 `coverage/` 下这两个文件 |
+| `quality.tools.complexity` / `duplication` / `mutation` | 否 | `false` 关闭该项（记 UNKNOWN/跳过）；`{ "command": "..." }` 用自定义命令替代默认工具（非 JS 语言接入用）：命令经 shell 在项目根执行，环境变量 `PD_QUALITY_FILES`（范围文件列表 JSON 的路径）、`PD_QUALITY_OUT`（结果写这里，或打印到 stdout）。复杂度输出 `[{file,name,line,endLine,complexity}]`；变异输出 mutation-testing-report JSON（Stryker.NET / Stryker4s 同格式），也可用 `"report": "路径"` 指向报告。`duplication.args` 可追加 jscpd 参数（如 `["--min-tokens","30"]`） |
+| `quality.versions` | 否 | 覆盖锁定主版本，如 `{ "eslint": "9", "jscpd": "5" }`；默认按 Node 版本选（见 `engineering-discipline.md` §6） |
+| `quality.timeout_minutes` / `mutation_timeout_minutes` | 否 | 单个工具超时，默认 10 / 30 分钟；`--timeout` 统一覆盖 |
 | `formats.decision_index` | 否 | `columns`、`default_status`、`open_pattern`（行文本匹配则视为 OPEN），`sources: [{path, id_column, title_column, id_pattern, default_status}]` 可把多个文件（如总台账 + 本版待裁决清单）合并读取 |
 
 ## 约定（评测中发现容易猜错的点）
@@ -42,4 +47,5 @@
 - **中文输出**：Windows Terminal / conhost 直接显示正常；PowerShell 5.1 捕获到变量或管道时会按 OEM 代码页（936）解码，先执行 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`，cmd 执行 `chcp 65001`。Git 中文文件名按 UTF-8 原样处理（脚本内部固定 `core.quotepath=false`）。
 - **`--cmd` 的引号**：脚本只登记、不执行命令。PowerShell 5.1 向原生程序传含双引号的参数会被拆坏，外层用单引号：`--cmd 'npm test -- --grep "price"'`；cmd 里用双引号。`npm`/`npx` 在 Windows 是 `npm.cmd`，若自己写脚本调用请用 `shell: true` 或显式 `npm.cmd`。
 - **Skill 检测路径**（`templates/skills-registry.json` 的 `detect_paths`）：`~` = `os.homedir()`（Windows 为 `%USERPROFILE%`）；支持 `%VAR%`、`$VAR`、`${VAR}`、`*`、`**`（最多下探 6 层）；`cmd:<名字>` 在 PATH 中查找（Windows 按 PATHEXT 识别 `.cmd/.exe`）。`~/.claude/…` 额外检查 `CLAUDE_CONFIG_DIR`，`~/.codex/…` 额外检查 `CODEX_HOME`。Windows 上 `pd.mjs skills` 优先输出 `generic_install_windows` 的 PowerShell 安装命令。
+- **质量信号（`pd.mjs quality`）**：优先用 `node <Node 安装目录>/node_modules/npm/bin/npx-cli.js` 直接调用工具（不经 shell）；找不到时调 PATH 中的 `npx.cmd`（经 shell，参数逐个加引号）。代理沿用 `HTTP(S)_PROXY` 与 npm 配置；输出与台账中的代理凭据会被抹掉。`--offline` 只用 npm 缓存。工具版本按 Node 选（Node 18 用 eslint 9 / c8 10 / Stryker 8）。
 - **安装脚本**：`install.ps1`（PowerShell 5.1/7，`-Target -Force -Dir`）、`install.cmd`（cmd 转调）、`install.sh`（`[claude|codex|both] --force --dir`）行为一致；`install-user.ps1` 保留为旧入口。

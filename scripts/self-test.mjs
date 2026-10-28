@@ -376,5 +376,83 @@ console.log('16. /pds 快捷命令（跨工具 commands）');
   }
 }
 
+console.log('Q. 可选质量信号 pd quality（不联网：PD_QUALITY_NO_NPX=1）');
+{
+  const Q = await import('./quality.mjs');
+  ok('CRAP 公式：comp²×(1−cov)³+comp', Q.crap(5, 0) === 30 && Q.crap(5, 1) === 5 && Q.crap(5, 0.6) === 6.6 && Q.crap(1, 0) === 2, `${Q.crap(5, 0)} ${Q.crap(5, 1)} ${Q.crap(5, 0.6)}`);
+  ok('覆盖率未知 → CRAP 为 null（不当 0 算）', Q.crap(3, null) === null && Q.crap(NaN, 0.5) === null);
+  const root = path.resolve(os.tmpdir(), 'pdq-root');
+  const lcov = Q.parseCoverage('SF:src/a.js\nDA:1,1\nDA:2,0\nDA:3,1\nDA:4,0\nDA:5,1\nend_of_record\n', root, 'lcov.info');
+  const fns = [{ file: 'src/a.js', name: 'outer', line: 1, endLine: 5, complexity: 3 }, { file: 'src/a.js', name: 'inner', line: 2, endLine: 3, complexity: 1 }];
+  const tab = Q.crapTable(fns, lcov, root);
+  const outer = tab.find((t) => t.name === 'outer'); const inner = tab.find((t) => t.name === 'inner');
+  ok('lcov 逐函数覆盖率扣除嵌套子函数行', Math.abs(outer.coverage - 2 / 3) < 0.001 && inner.coverage === 0.5, JSON.stringify(tab));
+  ok('逐函数 CRAP 计算并按最差排序', tab[0].name === 'outer' && outer.crap === Q.crap(3, 2 / 3), JSON.stringify(tab));
+  const ist = Q.parseCoverage(JSON.stringify({ [path.join(root, 'src', 'b.js')]: { path: path.join(root, 'src', 'b.js'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 3, 1: 0 }, fnMap: {}, f: {} } }), root, 'coverage-final.json');
+  ok('istanbul coverage-final.json 解析', Q.crapTable([{ file: 'src/b.js', name: 'b', line: 1, endLine: 2, complexity: 2 }], ist, root)[0].coverage === 0.5);
+  ok('报告里没有的文件：覆盖率/CRAP 为 null 并注明', Q.crapTable([{ file: 'src/z.js', name: 'z', line: 1, endLine: 2, complexity: 2 }], ist, root)[0].crap === null);
+  const v18 = Q.pickVersions('18.20.4'); const v22 = Q.pickVersions('22.13.0'); const v20 = Q.pickVersions('20.19.0'); const v2210 = Q.pickVersions('22.10.0');
+  ok('按 Node 版本锁主版本（18→eslint9/c8 10/stryker8；22.13→10/12/10）', v18.eslint === '9' && v18.c8 === '10' && v18.stryker === '8' && v22.eslint === '10' && v22.c8 === '12' && v22.stryker === '10' && v20.eslint === '10' && v20.stryker === '9' && v2210.eslint === '9' && v18.jscpd === '5', JSON.stringify({ v18, v22, v20, v2210 }));
+  const ms = Q.mutationScore({ files: { a: { mutants: [{ status: 'Killed' }, { status: 'Survived' }, { status: 'Timeout' }, { status: 'NoCoverage' }, { status: 'CompileError' }] } } });
+  ok('变异分数 =（杀死+超时）/（杀死+超时+幸存+未覆盖）', ms.score === 50 && ms.errors === 1, JSON.stringify(ms));
+  ok('区间并集行数', Q.unionLines([[1, 5], [3, 8], [10, 10]]) === 9);
+  const inv = Q.npxInvocation(['eslint@10'], ['node', 'C:\\Program Files\\x\\h.mjs', 'C:\\Temp Dir\\job.json'], { isWin: true, npxCli: null, npxBin: 'C:\\npx.cmd' });
+  ok('Windows 无 npx-cli.js 时经 shell 调 npx 并给含空格参数加引号', inv.shell === true && /^npx --yes -p eslint@10 node "C:\\Program Files\\x\\h\.mjs" "C:\\Temp Dir\\job\.json"$/.test(inv.file), inv.file);
+  const inv2 = Q.npxInvocation(['jscpd@5'], ['jscpd', '.'], { isWin: false, npxCli: '/n/npx-cli.js', npxBin: null });
+  ok('有 npx-cli.js 时直接用 node 调（不经 shell）', inv2.shell === false && inv2.file === process.execPath && inv2.args[0] === '/n/npx-cli.js' && inv2.args.includes('-p'));
+  ok('输出里的代理凭据被抹掉', Q.scrub('ECONNREFUSED http://user:tok3n@proxy:8080') === 'ECONNREFUSED http://***@proxy:8080');
+  ok('联网失败归类为离线/代理原因', /离线/.test(Q.failReason({ status: 1, stderr: 'npm error code ENOTFOUND\nnpm error request to https://registry.npmjs.org failed' })));
+
+  // 改动范围：阶段基线 = 该阶段最早提交的父提交
+  const qd = fresh();
+  const gc = (...a) => git(qd, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a);
+  const before = git(qd, 'rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(qd, 'src', 'price.js'), 'export const toCents = (yuan) => {\n  if (yuan < 0) return 0;\n  return Math.round(yuan * 100);\n};\n');
+  fs.writeFileSync(path.join(qd, 'src', 'extra.js'), 'export const one = () => 1;\n');
+  gc('add', '-A'); gc('commit', '-qm', 'phase work');
+  const sha2 = git(qd, 'rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(qd, 'src', 'wip.js'), 'export const w = 1;\n');
+  const b = Q.resolveBase(qd, { phase: 'P9', tasks: [{ phase: 'P9', execution: { commits: [sha2] } }, { phase: 'P8', execution: { commits: [before] } }] });
+  const ch = Q.changedFiles(qd, b.base);
+  ok('--phase 基线取阶段最早提交的父提交', b.base === before, JSON.stringify(b));
+  ok('--changed 只含阶段改动 + 未提交/未跟踪文件', JSON.stringify(ch) === JSON.stringify(['src/extra.js', 'src/price.js', 'src/wip.js']), JSON.stringify(ch));
+  ok('--base 无效时报告原因', Q.resolveBase(qd, { base: 'nope-rev' }).base === null);
+  fs.rmSync(path.join(qd, 'src', 'wip.js'));
+
+  // 端到端：离线（工具不可用）→ UNKNOWN + 原因，退出码 0，台账写 quality_signal
+  const env = { ...process.env, PD_QUALITY_NO_NPX: '1' };
+  const runQ = (...a) => spawnSync(process.execPath, [pd, 'quality', '.', ...a], { cwd: qd, encoding: 'utf8', env });
+  let x = runQ('--changed', '--base', before, '--phase', 'T001');
+  let led = JSON.parse(fs.readFileSync(path.join(qd, 'docs/evidence/test-ledger.json'), 'utf8')).entries.filter((e) => e.kind === 'quality_signal');
+  ok('工具不可用 → 退出码 0、CRAP/重复 UNKNOWN 附原因', x.status === 0 && /CRAP：UNKNOWN/.test(x.stdout) && /重复：UNKNOWN/.test(x.stdout) && /PD_QUALITY_NO_NPX/.test(x.stdout), x.stdout + x.stderr);
+  ok('台账登记 quality_signal（UNKNOWN + reason，覆盖路径 = 改动文件）', led.length === 2 && led.every((e) => e.result === 'UNKNOWN' && e.reason && e.target === 'T001' && e.scope === 'phase' && e.commit && e.fingerprint) && JSON.stringify(led[0].covers_paths) === JSON.stringify(['src/extra.js', 'src/price.js']), JSON.stringify(led, null, 1));
+  ok('变异默认不跑（无 Stryker 配置、未加 --mutation），不登记', /变异：SKIPPED/.test(x.stdout) && !led.some((e) => e.signal === 'mutation'), x.stdout);
+  ok('.metrics/ 自带 .gitignore，不污染工作区', fs.existsSync(path.join(qd, '.metrics', '.gitignore')) && !/\.metrics/.test(git(qd, 'status', '--porcelain')));
+
+  // 端到端：自定义复杂度命令 + lcov 报告 → 真实 CRAP，PASS 不当阶段体检复用
+  fs.writeFileSync(path.join(qd, 'qc.cjs'), "const fs=require('fs');const files=JSON.parse(fs.readFileSync(process.env.PD_QUALITY_FILES,'utf8'));fs.writeFileSync(process.env.PD_QUALITY_OUT,JSON.stringify(files.filter(f=>f==='src/price.js').map(f=>({file:f,name:'toCents',line:1,endLine:4,complexity:2}))));\n");
+  fs.writeFileSync(path.join(qd, 'cov.info'), 'SF:src/price.js\nDA:1,1\nDA:2,1\nDA:3,0\nend_of_record\n');
+  edit(qd, '.product-development/config.json', (j) => { j.quality = { tools: { complexity: { command: 'node qc.cjs' }, duplication: false }, coverage_report: 'cov.info' }; });
+  gc('add', '-A'); gc('commit', '-qm', 'quality cfg');
+  x = runQ('--changed', '--base', before, '--phase', 'T001');
+  led = JSON.parse(fs.readFileSync(path.join(qd, 'docs/evidence/test-ledger.json'), 'utf8')).entries.filter((e) => e.kind === 'quality_signal');
+  const c2 = led.filter((e) => e.signal === 'crap').pop();
+  ok('自定义命令 + lcov → CRAP 计算并登记 PASS', x.status === 0 && c2?.result === 'PASS' && c2.metrics.worst.crap === Q.crap(2, 2 / 3) && c2.metrics.worst.name === 'toCents', x.stdout + JSON.stringify(c2));
+  ok('配置关闭的信号记 UNKNOWN 并说明', led.filter((e) => e.signal === 'duplication').pop()?.reason?.includes('quality.tools.duplication=false'));
+  ok('摘要证据文件写入 evidence 目录', c2?.evidence && fs.existsSync(path.join(qd, c2.evidence)), c2?.evidence);
+  x = run(qd, 'test-plan', '.', '--phase', 'T001');
+  ok('quality_signal 的 PASS 不出现在阶段可复用列表', x.status === 0 && !/quality_signal|qcrap/.test(x.stdout), x.stdout);
+  x = run(qd, 'record', '.', '--task', 'T001-01', '--event', 'VERIFIED');
+  ok('quality_signal 的 PASS 不能让卡转 VERIFIED', x.status !== 0 && /测试台账/.test(x.stderr), x.stdout + x.stderr);
+  x = run(qd, 'health', '.');
+  ok('写入 quality_signal 后体检仍通过', x.status === 0, x.stdout + x.stderr);
+  const plain = fs.mkdtempSync(path.join(os.tmpdir(), 'pdq-plain-'));
+  fs.writeFileSync(path.join(plain, 'a.py'), 'def f(x):\n    return x\n');
+  x = spawnSync(process.execPath, [pd, 'quality', plain, '--changed'], { encoding: 'utf8', env });
+  ok('无 config、非 git 仓库、非 JS 项目：UNKNOWN 附原因，退出码 0', x.status === 0 && /不是 JS\/TS/.test(x.stdout) && /未写测试台账/.test(x.stdout), x.stdout + x.stderr);
+  x = spawnSync(process.execPath, [pd, 'quality', path.join(plain, 'nope')], { encoding: 'utf8', env });
+  ok('目录不存在也退出码 0', x.status === 0 && /UNKNOWN/.test(x.stdout), x.stdout + x.stderr);
+}
+
 console.log(`\n结果：${pass} 通过，${fail} 失败`);
 process.exitCode = fail ? 1 : 0;

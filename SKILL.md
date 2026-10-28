@@ -3,7 +3,7 @@ name: product-development
 description: 统一的 AI 产品开发工作流：产品讨论、决策固化、一次性全量规划、执行前细化、多助手执行、专职测试与测试复用、规划更新与裁决、Git 交接。用于“和我讨论/记录决定/规划全部剩余任务/执行某张任务卡/验收或体检/重新规划/汇报进度”等请求。核心：有据可依，行为留痕。
 ---
 
-# Product Development：统一产品开发工作流（v0.5.0）
+# Product Development：统一产品开发工作流（v0.5.1）
 
 一个入口，按意图和项目状态选择**最小且足够**的流程。不要每次把所有阶段走一遍。
 本 Skill 是工作规范；文件、终端、Git、网络权限取决于当前工具。随包脚本 `scripts/pd.mjs` 做确定性检查（体检、选下一任务、生成提示词、留痕、测试复用判断）。
@@ -132,7 +132,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - **测试助手**：阶段结束做阶段体检（只覆盖本阶段改到的模块；前端含 tsc 和 build），共享契约变化时做集成验证，开发全部完成或发版前做一次全量回归。
 - **复用规则**：每次测试登记到测试台账（命令、覆盖路径、基线提交、内容指纹、结果、证据）。下次测试前运行 `pd.mjs test-plan`：覆盖路径内容和关联决策都没变的 PASS 结果**原则上不重测**；指纹变化、从未测过、上次失败的才测。
 - 不得用 grep 源码冒充行为测试；未执行的测试不得写成通过。
-- **可选质量信号**（CRAP / 重复 / 变异测试，装了工具才跑，只看本阶段改动）：阶段体检时登记为 `kind: quality_signal`，交规划者判断是否排卡；不是门禁、无硬阈值，工具缺失不阻塞。见 `references/engineering-discipline.md` §6。
+- **可选质量信号**（CRAP / 重复 / 变异测试，只看本阶段改动）：阶段体检时跑 `pd.mjs quality . --changed --phase <阶段> [--test-cmd "<定向测试>"]`（零安装，经 npx 临时拉 ESLint/c8/jscpd，变异按需用 StrykerJS），自动登记 `kind: quality_signal`，交规划者判断是否排卡；不是门禁、无硬阈值，工具缺失不阻塞。见 `references/engineering-discipline.md` §6。
 
 详见 `references/testing-and-reuse.md`。
 
@@ -203,7 +203,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - `references/automation-levels.md` L1/L2/L3 自动化边界
 - `references/tool-compatibility.md` Claude Code / Codex / DeepSeek 等适配
 - `references/execution-playbooks.md` 执行手册：开工前自评、收尾（测试→提交→推送→同步→留痕）、七类任务的实现规范
-- `references/engineering-discipline.md` 编码纪律（先跑通再做对）、修 bug 先复现、测试写法自检、可选质量信号（crapper/dryer/mutator，借鉴 ub-mode，永不阻塞）
+- `references/engineering-discipline.md` 编码纪律（先跑通再做对）、修 bug 先复现、测试写法自检、可选质量信号（`pd.mjs quality`：ESLint complexity + c8 → CRAP、jscpd 重复、StrykerJS 变异；永不阻塞）
 - `references/config-reference.md` config.json 字段与易猜错的约定
 - `references/planner-protocol.md` 规划协议、契约冻结、切片、深度推理触发条件
 - `references/solution-review.md` 多方案评审、打分、反模式
@@ -211,4 +211,4 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - `references/project-structure.md` 项目结构设计：分层、依赖方向、16+2 维度、栈适配、后台任务、守卫清单、STRUCTURE 步骤（模板 `templates/project-structure.md`）
 - `references/skill-ecosystem.md` 外部 Skill 路由表
 - `templates/` 配置、索引、决策、任务卡、阶段计划、AGENTS 片段
-- `scripts/pd.mjs`（scan / health / next / sync / replan-check / ask-check / skills / prompt / record / test-plan / test-record / status），`scripts/self-test.mjs`
+- `scripts/pd.mjs`（scan / health / next / sync / replan-check / ask-check / skills / quality / prompt / record / test-plan / test-record / status），`scripts/quality.mjs`（质量信号），`scripts/self-test.mjs`

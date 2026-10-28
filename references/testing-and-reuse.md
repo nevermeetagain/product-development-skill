@@ -7,7 +7,7 @@
 | T3 集成 | 测试助手 | 共享契约/数据模型/跨阶段路径变化 | 受影响边界 |
 | T4 全量回归 | 测试助手 | 开发全部完成或发版前 | 项目定义的完整回归、构建、安全检查 |
 门禁（gates）属于 T2–T4，归测试助手。
-可选质量信号（CRAP / 重复 / 变异，`engineering-discipline.md` §6）在 T2 顺带跑，`kind: quality_signal`，只作规划者的排卡线索：不阻塞、无硬阈值、工具缺失记 UNKNOWN；`PASS` 只表示工具跑完，**不能当作阶段体检或回归的 PASS 复用**。
+可选质量信号（CRAP / 重复 / 变异，`engineering-discipline.md` §6）在 T2 顺带跑：`node scripts/pd.mjs quality . --changed --phase <阶段> --test-cmd "<定向测试命令>"`（Node 路径，经 npx 临时拉 ESLint/c8/jscpd，变异仅在有 Stryker 配置或 `--mutation` 时跑），自动登记 `kind: quality_signal`，只作规划者的排卡线索：不阻塞、无硬阈值、工具缺失记 UNKNOWN；`PASS` 只表示工具跑完，**不能当作阶段体检或回归的 PASS 复用**。
 
 ## 测试台账（test-ledger.json）
 每条：id、at、scope(task/phase/final)、kind(targeted/phase_review/integration/regression/gate)、target、result、commit、covers_paths、fingerprint、commands、evidence、covers_tasks、tester。

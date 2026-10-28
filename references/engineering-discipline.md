@@ -36,18 +36,25 @@
 上报时写出“两次修复共同依赖的前提”一句话，并说明它为何可能不成立。例：“两次都假设缓存失效由写请求触发——但后台导入任务直写数据库，不经过写接口。”规划者据此改卡，而不是让执行助手试第三种修法。
 
 ## 6. 可选质量信号（阶段体检用，永不阻塞）
-有工具就用，没有就跳过；**任何结果都不是门禁**，不设硬阈值，不阻止卡转 `VERIFIED`。
+有就用，没有就跳过；**任何结果都不是门禁**，不设硬阈值，不阻止卡转 `VERIFIED`，`pd.mjs quality` 退出码恒为 0。
 
-| 工具（0BSD，Python 3，首次运行自建 `.venv`） | 测什么 | 范围 | 参考线（只作信号） | 输出 |
-|---|---|---|---|---|
-| [crapper](https://github.com/unclebob/crapper) | CRAP = CC²×(1−覆盖率)³+CC，按函数 | `./crapper --changed` 或本阶段路径 | ≥30 值得看；<10 为理想 | stdout + `.metrics/crap.edn` |
-| [dryer](https://github.com/unclebob/dryer) | 结构相似重复（Jaccard） | `./dryer --changed` | 默认 0.82，ub-mode 用 0.8 | stdout + `.metrics/dry.edn` |
-| [mutator](https://github.com/unclebob/mutator) | 变异测试：幸存/未覆盖 | `./mutator --changed`，只对金额/规则/权限等高风险模块 | 幸存者 = 测试漏洞线索 | `.metrics/mutate/*.edn` |
+**默认路径（Node，零安装）**：`node scripts/pd.mjs quality . --changed --phase <阶段> [--test-cmd "<本阶段定向测试命令>"]`。本 Skill 不装任何依赖；工具只在运行时经 `npx --yes <包>@<锁定主版本>` 临时拉取（npm 缓存复用，尊重 `HTTP(S)_PROXY` 与 npm 代理配置）。离线、找不到 npm、语言不支持 → 该项记 `UNKNOWN` + 原因。
 
-- 支持语言：Clojure、Java、Go、TypeScript/JavaScript、Rust、Python。mutator 需要把 crapper 检出在同级目录（`../crapper`）；mutator 会反复跑测试，成本高，只用 `--changed` 或单文件。Windows 原生 shell 未验证（UNKNOWN），可在 Git Bash/WSL 运行。
-- 运行即可能触发覆盖率命令（会跑相关测试）；阶段体检本就只覆盖本阶段改动模块，用 `--changed`/路径参数保持这个范围。全树运行只在发版前、且可选。
-- **登记**：`pd.mjs test-record . --target <阶段> --scope phase --kind quality_signal --result PASS --cmd "./crapper --changed" --paths "<被测路径>" --evidence <摘要文件>`。`PASS` 只表示“工具跑完了”，数值写在摘要里（如“最差 CRAP 34 @ pricing.applyCoupon；重复候选 2 对”）；工具缺失或运行失败记 `UNKNOWN` + 原因。`.metrics/` 原文件不提交（加入 `.gitignore`）。
-- **处理**：信号交规划者判断是否排重构/补测卡（偶然相似 ≠ 同一决策，不强制合并；删死代码也要排卡）。不回头卡住已完成的卡。
+| 信号 | 工具（许可证，主版本按 Node 选） | 怎么得出 | 参考线（只作信号） |
+|---|---|---|---|
+| 复杂度 | [ESLint](https://eslint.org/docs/latest/rules/complexity) 内置 `complexity` 规则（MIT；Node ≥20.19/22.13 用 10，Node 18 用 9）；TS 加 `@typescript-eslint/parser@8`（MIT）+ `typescript@5` | 逐函数圈复杂度与起止行；不读项目 ESLint 配置 | — |
+| 覆盖率 | 已有 `coverage/coverage-final.json` 或 `coverage/lcov.info`；或 `--test-cmd` 设 `NODE_V8_COVERAGE` 跑定向测试后用 [c8](https://github.com/bcoe/c8) `report`（ISC；12，Node 18 用 10） | 逐函数行覆盖（扣除嵌套子函数） | — |
+| CRAP | 上两项都有时计算：**CRAP = comp² × (1 − cov)³ + comp** | 逐函数，按最差排序 | ≥30 值得看；<10 为理想 |
+| 重复 | [jscpd](https://github.com/kucherenko/jscpd) 5（MIT，Rust 预编译，含 Windows x64/arm64，支持 200+ 语言） | 全仓扫描，`--changed` 时只算触及改动文件的克隆；% = 改动源码中被克隆覆盖的行 / 改动源码总行 | 看新增的克隆 |
+| 变异 | [StrykerJS](https://stryker-mutator.io/docs/stryker-js/introduction/) `@stryker-mutator/core`（Apache-2.0；Node ≥22 用 10，20 用 9，18 用 8） | **只在项目已有 Stryker 配置或显式 `--mutation` 时跑**（慢）；`--changed` 时 `--mutate` 改动文件；无配置时用 command 运行器跑 `--test-cmd`/`npm test` | 幸存者 = 测试漏洞线索 |
+
+- **范围**：`--changed` 的基线依次取 `--base <rev>` → `--phase` 下各卡 `execution.commits` 中最早提交的父提交 → 当前分支与主线的分叉点 → 有未提交改动用 `HEAD` → `HEAD~1`；再加未跟踪文件。`--paths a,b` 进一步限定（如只对金额/权限模块跑 `--mutation`）。全仓运行只在发版前、且可选。
+- **覆盖率不额外跑全量**：优先读已有报告；要现场采集就把本阶段的定向测试命令传给 `--test-cmd`。都没有 → CRAP 记 `UNKNOWN`（仍输出复杂度）。报告早于改动时提示“可能过期”。
+- **非 JS 项目**：jscpd 照常工作；复杂度/变异默认 `UNKNOWN`，可在 config 的 `quality.tools.complexity.command` / `quality.tools.mutation.command` 接入语言工具（Stryker.NET、Stryker4s 等输出同一 mutation-testing-report JSON），覆盖率给 lcov（`quality.coverage_report`）。约定见 `config-reference.md`。
+- **Windows / Ubuntu**：优先用 Node 自带的 `npm/bin/npx-cli.js` 直接调用（不经 shell）；找不到时 Windows 经 shell 调 `npx.cmd` 并逐个加引号。路径一律按 `/` 存储。
+- **登记**：`pd.mjs quality` 自动按信号（crap / duplication / mutation）各写一条台账：`kind: quality_signal`、`signal`、`target`（`--phase`/`--task`）、`result`（`PASS` = 工具跑完 / `UNKNOWN` + `reason`）、`metrics`（最差函数、≥30 个数、重复 %、变异分数等）、`covers_paths`（改动文件或 `.`）+ 指纹、`evidence`（证据目录下的摘要 md）。明细写 `.metrics/pd-quality-latest.json`（目录自带 `.gitignore`，不提交）。`--no-record` 只输出。手工跑其他工具时仍可用 `pd.mjs test-record --kind quality_signal` 登记。
+- **处理**：信号交规划者判断是否排重构/补测卡（偶然相似 ≠ 同一决策，不强制合并；删死代码也要排卡）。不回头卡住已完成的卡。`quality_signal` 的 PASS 不能当阶段体检、回归或 `VERIFIED` 的依据（脚本已排除）。
+- **可选替代**：已装 Python ≥3.11 的团队也可用 unclebob 的 [crapper](https://github.com/unclebob/crapper) / [dryer](https://github.com/unclebob/dryer) / [mutator](https://github.com/unclebob/mutator)（0BSD，Python 实现，首次运行自建 `.venv`；分析 Clojure/Java/Go/TS/Rust/Python），结果用 `test-record --kind quality_signal` 手工登记。
 - uml-viewer（可视化）不纳入：依赖 Clojure + Java 21，并伴随启动带 `--yolo` 的代理会话，越出本 Skill 的权限边界。
 
 ## 7. 收尾报告与清理

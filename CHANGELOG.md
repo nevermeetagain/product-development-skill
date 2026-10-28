@@ -1,5 +1,17 @@
 # 变更记录
 
+## 0.5.1（2026-10-28）
+
+可选质量信号改走 Node（不是每位用户都有 Python）：
+- 核实：unclebob 的 crapper / dryer / mutator 均为 Python 实现（`requires-python >=3.11`，首次运行建 `.venv`，0BSD），分析 Clojure/Java/Go/TS/Rust/Python。降为可选替代，只在文档提及。
+- 新增 `pd.mjs quality <root> [--changed] [--phase P] [--base REV] [--paths a,b] [--test-cmd "..."] [--coverage file] [--mutation] [--offline] [--no-record] [--json]`（逻辑在 `scripts/quality.mjs`、`scripts/quality-eslint.mjs`）：本 Skill 零安装，运行时经 `npx --yes` 拉锁定主版本——ESLint 内置 `complexity`（MIT，10 / Node 18 用 9；TS 加 `@typescript-eslint/parser@8` + `typescript@5`）逐函数复杂度；覆盖率读现有 istanbul/lcov 报告或 `NODE_V8_COVERAGE` 跑定向测试后用 c8 report（ISC，12 / Node 18 用 10）；**CRAP = comp²×(1−cov)³+comp** 逐函数（扣除嵌套子函数行）；jscpd 5（MIT，Rust 预编译含 Windows）全仓扫描、`--changed` 只算触及改动文件的克隆；StrykerJS（Apache-2.0，10/9/8 按 Node）只在已有 Stryker 配置或 `--mutation` 时跑。
+- `--changed` 基线：`--base` → 阶段最早提交的父提交 → 分支分叉点 → 未提交改动 → `HEAD~1`，含未跟踪文件。
+- 永不阻塞：无阈值、退出码恒 0；离线/无 npm/语言不支持/超时 → UNKNOWN + 原因（代理凭据会被抹掉）。按信号写台账 `kind: quality_signal`（`signal`、`metrics`、`reason`、指纹、证据摘要 md）；明细 `.metrics/pd-quality-latest.json`（自带 `.gitignore`）。`health`/`record`/`test-plan` 不再把 quality_signal 的 PASS 当作阶段体检、回归或 VERIFIED 依据。
+- 非 JS 项目：jscpd 照常；复杂度/变异可经 `quality.tools.*.command` 接入（变异读 mutation-testing-report JSON，Stryker.NET/Stryker4s 通用），覆盖率给 lcov。新增 config 键 `quality.test_command`、`coverage_report`、`tools`、`versions`、`timeout_minutes`。
+- Windows/Ubuntu：优先 `node npx-cli.js` 直接调用，找不到再经 shell 调 `npx.cmd`；路径按 `/` 归一。
+- 文档：`engineering-discipline.md` §6 重写为 Node 默认；`testing-and-reuse.md`、`skill-ecosystem.md`、`config-reference.md`、README、SKILL.md 同步。
+- 自测新增 28 项（CRAP 数学、lcov/istanbul 逐函数覆盖、版本选择、变异分数、Windows 引号、凭据抹除、阶段基线与改动范围、离线 UNKNOWN、自定义命令端到端 CRAP 与台账、quality PASS 不可复用）；CI 增一步真实 npx 冒烟（Ubuntu/Windows × Node 18/22）。
+
 ## 0.5.0（2026-10-28）
 
 吸收 [unclebob/ub-mode](https://github.com/unclebob/ub-mode) 的可用做法（逐条分析：采纳 / 改写 / 不采纳），全部按用户规则改写——只跑定向测试、不设门禁、无硬阈值、不逐卡停等复核：

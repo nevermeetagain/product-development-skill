@@ -14,11 +14,14 @@
 //   replan-check [root]                     规划者主动体检：列出需要规划更新/裁决的触发项，并生成规划者提示词
 //   ask-check [root] "关键词 关键词"           提问前先查决策登记册与任务卡，已决定的不再问用户
 //   skills   [root]                         检查可选外部 Skill 是否已安装，缺失时输出安装命令（让 IDE/CLI 自己装）
+//   quality  [root] [--changed] [--phase P] [--base REV] [--test-cmd "..."] [--coverage file] [--mutation] [--offline] [--no-record]
+//                                           可选质量信号（CRAP/重复/变异，经 npx 临时拉工具），永不阻塞、退出码恒 0
 // 记录参数：--needs DEC-002 --escalate planner|user（BLOCKED）；--no-change-reason "..."；--remove-commit SHA（CORRECTION）
 // 测试参数：--reused-from TR-xxx（复用登记，须指纹仍一致）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { quality as runQuality } from './quality.mjs';
 import {
   TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
@@ -28,18 +31,19 @@ import {
 const [nodeMajor] = process.versions.node.split('.').map(Number);
 if (nodeMajor < 18) die(`需要 Node.js 18 或更高版本（当前 ${process.version}）`);
 
-const args = parseArgs(process.argv.slice(2), ['all', 'write', 'json', 'force', 'push', 'merge']);
+const args = parseArgs(process.argv.slice(2), ['all', 'write', 'json', 'force', 'push', 'merge', 'changed', 'mutation', 'offline', 'no-record']);
 process.stdout.on('error', (e) => { if (e.code === 'EPIPE') process.exit(0); throw e; });
 const cmd = args._[0];
 const root = args._[1] || '.';
 
-const commands = { health, next, prompt, record, 'test-plan': testPlan, 'test-record': testRecord, status, scan, sync, 'replan-check': replanCheck, 'ask-check': askCheck, skills };
+const commands = { health, next, prompt, record, 'test-plan': testPlan, 'test-record': testRecord, status, scan, sync, 'replan-check': replanCheck, 'ask-check': askCheck, skills, quality: qualityCmd };
 if (!commands[cmd]) {
-  die('用法：node pd.mjs <health|next|prompt|record|test-plan|test-record|status|scan|sync|replan-check|ask-check|skills> [root] [选项]');
+  die('用法：node pd.mjs <health|next|prompt|record|test-plan|test-record|status|scan|sync|replan-check|ask-check|skills|quality> [root] [选项]');
 }
 let ws;
 // scan / skills 不需要 config；不调用 process.exit，避免 Windows 控制台异步输出被截断
 if (cmd === 'scan' || cmd === 'skills') commands[cmd]();
+else if (cmd === 'quality') { try { ws = loadWorkspace(root); } catch { ws = null; } commands[cmd](); }
 else {
   try { ws = loadWorkspace(root); } catch (e) { die(e.message); }
   await commands[cmd]();
@@ -90,7 +94,7 @@ function health() {
     }
   }
   const ledger = ws.ledger.entries || [];
-  const hasPass = (id, phase) => ledger.some((e) => e.result === 'PASS' && (e.target === id || (phase && e.target === phase) || (e.covers_tasks || []).includes(id)));
+  const hasPass = (id, phase) => ledger.some((e) => e.result === 'PASS' && e.kind !== 'quality_signal' && (e.target === id || (phase && e.target === phase) || (e.covers_tasks || []).includes(id)));
   for (const t of tasks) {
     const tag = `[${t.id}]`;
     const role = t.role || 'executor';
@@ -413,7 +417,7 @@ function record() {
   }
   if (DONE_LIKE.includes(status)) {
     const role = t.role || 'executor';
-    const ledgerOk = (ws.ledger.entries || []).some((e) => e.result === 'PASS' && (e.target === t.id || e.target === t.phase || (e.covers_tasks || []).includes(t.id)));
+    const ledgerOk = (ws.ledger.entries || []).some((e) => e.result === 'PASS' && e.kind !== 'quality_signal' && (e.target === t.id || e.target === t.phase || (e.covers_tasks || []).includes(t.id)));
     if (status === 'VERIFIED' && !ledgerOk) die(`拒绝：${t.id} 要标 VERIFIED，测试台账必须先有 PASS 记录（pd.mjs test-record）`);
     if (role === 'tester' && !ledgerOk && !ex.no_change_reason) die(`拒绝：测试卡 ${t.id} 完成前必须先登记测试台账`);
     if (role !== 'tester' && !(ex.commits || []).length && !ex.no_change_reason) die(`拒绝：${t.id} 标 ${status} 需要真实提交（--commit <sha>）或 --no-change-reason`);
@@ -460,7 +464,7 @@ function testPlan() {
   };
   const latest = (list) => list.sort((a, b) => (b.at || '').localeCompare(a.at || ''))[0];
   for (const t of scopeTasks) {
-    const mine = entries.filter((e) => e.target === t.id || (e.covers_tasks || []).includes(t.id));
+    const mine = entries.filter((e) => e.kind !== 'quality_signal' && (e.target === t.id || (e.covers_tasks || []).includes(t.id)));
     const last = latest([...mine]);
     const pass = latest(mine.filter((e) => e.result === 'PASS'));
     if (last && last.result === 'FAIL' && (!pass || last.at > pass.at)) { failed.push({ task: t.id, entry: last.id }); continue; }
@@ -468,7 +472,7 @@ function testPlan() {
     const r = evalEntry(pass);
     (r.same ? reuse : stale).push({ task: t.id, entry: pass.id, reason: r.same ? '' : (r.decChanged ? '相关决策已变化' : '覆盖路径内容已变化') });
   }
-  const phaseEntries = entries.filter((e) => e.scope !== 'task' && e.result === 'PASS' && (!args.phase || e.target === args.phase));
+  const phaseEntries = entries.filter((e) => e.scope !== 'task' && e.result === 'PASS' && e.kind !== 'quality_signal' && (!args.phase || e.target === args.phase));
   const phaseState = phaseEntries.map((e) => ({ entry: e.id, target: e.target, kind: e.kind, ...evalEntry(e) }));
   console.log(`测试计划（基于 ${gitInfo(ws.root).head?.slice(0, 7) ?? '?'}${args.phase ? '，阶段 ' + args.phase : ''}）`);
   console.log(`  可复用（需求和代码未变，原则上不重测）：${reuse.map((x) => `${x.task}←${x.entry}`).join(', ') || '无'}`);
@@ -734,6 +738,13 @@ function askCheck() {
   if (open.length) console.log(`注意：${open.map((h) => h.id).join(', ')} 仍未决——这类问题应等裁决，不要自行假设。`);
   const decided = strong.filter((h) => h.kind === '决策' && h.status === 'DECIDED');
   if (decided.length && !open.length) { console.log(`结论：已有 DECIDED 决策 ${decided.map((h) => h.id).join(', ')}，不得再向用户提问，除非能证明它与新证据矛盾（此时交规划者 REPLAN）。`); process.exitCode = 5; }
+}
+
+// ---------------------------------------------------------------- 可选质量信号（逻辑在 quality.mjs）
+function qualityCmd() {
+  // 没有 config 也能跑（只输出、不写台账）；任何工具问题都记 UNKNOWN，不抛错、不改退出码
+  try { runQuality({ root: ws?.root || root, ws, args }); } catch (e) { console.log(`质量信号：UNKNOWN —— 内部错误：${String(e?.message).replace(/(\w+:\/\/)[^\s@/]+@/g, '$1***@').slice(0, 200)}`); }
+  process.exitCode = 0;
 }
 
 // ---------------------------------------------------------------- 外部 Skill 安装检查

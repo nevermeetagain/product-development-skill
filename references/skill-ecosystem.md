@@ -92,7 +92,7 @@
 6. **置信度过滤的审查（code-review 插件）**：PHASE_REVIEW 中每个问题打 0–100 置信度，<80 不上报；排除既有问题、lint 能抓的、吹毛求疵的。→ 降低规划者裁决噪音。
 7. **读者测试（doc-coauthoring）**：重要规格/交接文档完成后，用无上下文子代理提 5–10 个读者问题检验可理解性，暴露隐含假设。→ 并入 PLAN 完成前自检（可选）。
 8. **两段式复审：先合规后质量（superpowers subagent-driven）**：阶段体检先查"是否满足任务卡验收标准"，再查代码质量；收尾可用 code-simplifier 只整理本阶段改动。→ 并入 PHASE_REVIEW 顺序。
-9. **先跑通再做对 + 确定性度量（ub-mode）**：修 bug 先复现、测试空实现检验、重构三步、先减后加；crapper/dryer/mutator 的 `--changed` 结果作阶段体检信号。→ 并入 `engineering-discipline.md`。
+9. **先跑通再做对 + 确定性度量（ub-mode）**：修 bug 先复现、测试空实现检验、重构三步、先减后加；`--changed` 范围的 CRAP/重复/变异作阶段体检信号。→ 并入 `engineering-discipline.md`；0.5.1 起默认用 Node 路径 `pd.mjs quality`（npx 临时拉 ESLint complexity + c8 + jscpd，StrykerJS 按需），因为不是每位用户都有 Python；unclebob 的 Python 工具 crapper/dryer/mutator 仅作可选替代。
 
 ## 5. 内置等价做法（未安装时）
 

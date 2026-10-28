@@ -1,6 +1,6 @@
 # product-development：统一 AI 产品开发 Skill
 
-版本 0.5.0 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
+版本 0.5.1 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
 核心：**有据可依，行为留痕**。
 
 ## 适合谁
@@ -49,6 +49,7 @@ node scripts/pd.mjs sync    <项目根> --task T001-02 --push   # 推送并核�
 node scripts/pd.mjs replan-check <项目根>     # 规划者主动检查：哪些要更新/裁决，并生成规划者提示词
 node scripts/pd.mjs ask-check <项目根> "满减 叠加"   # 提问前查决策登记册，已决定的不再问
 node scripts/pd.mjs skills  <项目根>          # 检查外部 Skill，缺失时输出官方仓库和安装命令
+node scripts/pd.mjs quality <项目根> --changed --phase T001 --test-cmd "npm test -- price"  # 可选质量信号（CRAP/重复/变异），永不阻塞
 node scripts/self-test.mjs                     # 自测
 ```
 
@@ -73,7 +74,7 @@ node scripts/self-test.mjs                     # 自测
 安装行为：内容相同跳过；已有**不同**的 `pds.md` 默认不动，加 `--force` / `-Force` 先备份为 `pds.md.bak.<时间>` 再覆盖；`--no-commands` / `-NoCommands` 只装 Skill；`--dir` 模式下需另给 `--commands-dir`（如 `--dir .claude/skills --commands-dir .claude/commands` 做项目级安装）。安装器暂无卸载：删掉对应 `pds.md` 即可。
 
 ## 跨平台（Windows / Ubuntu / macOS）
-需要 **Node.js 18+**（`node --version`）和 Git（Windows 用 Git for Windows）。`pd.mjs` 零依赖、只调用 `git`，不经过 shell，PowerShell、cmd、Git Bash、bash 都能直接跑。
+需要 **Node.js 18+**（`node --version`）和 Git（Windows 用 Git for Windows）。`pd.mjs` 零依赖、只调用 `git`，不经过 shell，PowerShell、cmd、Git Bash、bash 都能直接跑。例外是可选的 `pd.mjs quality`：它用随 Node 安装的 npm 临时拉工具（`npx`），`--test-cmd` 经系统 shell 执行；没网/没有 npm 时记 UNKNOWN，不报错。
 
 | 做什么 | PowerShell / cmd（Windows） | bash（Ubuntu / macOS / Git Bash） |
 |---|---|---|
@@ -101,4 +102,4 @@ Skill 是规范，不是后台服务：自动连续调度多个 CLI 需要另写
 0.1.0 由 ChatGPT 起草；0.2.0/0.3.0 由 Hark 结合 Claude 评审、用户补充要求和真实项目执行教训优化并测试。变更见 CHANGELOG.md。
 
 ## 致谢
-0.5.0 的编码纪律（先跑通再做对、修 bug 先复现、测试空实现检验、重构三步）与可选质量信号借鉴 Robert C. Martin 的 [unclebob/ub-mode](https://github.com/unclebob/ub-mode)（其本身源自 @poteto 的 poteto-mode / pstack）。ub-mode 仓库未附许可证，本包只借鉴思想、按本 Skill 规则改写，未复制原文；硬阈值、推主线、自行清理磁盘等做法未采纳（理由见 `references/skill-ecosystem.md` §3）。可选度量工具 [crapper](https://github.com/unclebob/crapper)、[dryer](https://github.com/unclebob/dryer)、[mutator](https://github.com/unclebob/mutator) 为 0BSD 许可，需自行安装，不随本包分发。
+0.5.0 的编码纪律（先跑通再做对、修 bug 先复现、测试空实现检验、重构三步）与可选质量信号借鉴 Robert C. Martin 的 [unclebob/ub-mode](https://github.com/unclebob/ub-mode)（其本身源自 @poteto 的 poteto-mode / pstack）。ub-mode 仓库未附许可证，本包只借鉴思想、按本 Skill 规则改写，未复制原文；硬阈值、推主线、自行清理磁盘等做法未采纳（理由见 `references/skill-ecosystem.md` §3）。0.5.1 起质量信号默认走 Node（`pd.mjs quality`，不是每位用户都有 Python）：运行时经 `npx` 临时拉取 [ESLint](https://eslint.org)（MIT，`complexity` 规则）、[c8](https://github.com/bcoe/c8)（ISC）、[jscpd](https://github.com/kucherenko/jscpd)（MIT）、按需 [StrykerJS](https://stryker-mutator.io)（Apache-2.0），均不随本包分发；离线或语言不支持记 UNKNOWN。unclebob 的 Python 工具 [crapper](https://github.com/unclebob/crapper)、[dryer](https://github.com/unclebob/dryer)、[mutator](https://github.com/unclebob/mutator)（0BSD）仍可作可选替代。
