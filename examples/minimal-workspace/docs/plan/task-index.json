@@ -1,0 +1,24 @@
+{
+  "plan_version": "PLAN-R1",
+  
+  "tasks": [
+    { "id": "T001-01", "title": "价格模型改为整数分", "phase": "T001", "role": "executor", "status": "DONE", "detail": "READY",
+      "requirements": ["REQ-001"], "decisions": ["DEC-001"], "depends_on": [], "card": "docs/plan/tasks/T001-01.md",
+      "allowed_paths": ["src/price.js", "test/price.test.js"],
+      "acceptance": [{ "id": "A1", "desc": "toCents(12.34) 返回 1234", "check": { "type": "command", "cmd": "node test/price.test.js" } }],
+      "tests": { "targeted": ["node test/price.test.js"] },
+      "execution": { "commits": [], "no_change_reason": "示例：T001-01 的代码随示例初始提交提供；接入真实仓库后用 pd.mjs record --event CORRECTION --commit <sha> 补录真实提交" } },
+    { "id": "T001-02", "title": "购物车合计使用整数分", "phase": "T001", "role": "executor", "status": "TODO", "detail": "REFINE_BEFORE_EXECUTION", "priority": 1,
+      "requirements": ["REQ-002"], "decisions": ["DEC-001"], "depends_on": ["T001-01"], "card": "docs/plan/tasks/T001-02.md",
+      "objective": "购物车合计改为整数分累加，避免浮点误差。",
+      "allowed_paths": ["src/cart.js", "test/cart.test.js"],
+      "acceptance": [{ "id": "A1", "desc": "0.1+0.2 元两件商品合计 30 分", "check": { "type": "command", "cmd": "node test/cart.test.js" } }],
+      "tests": { "targeted": ["node test/cart.test.js"] } },
+    { "id": "T001-03", "title": "优惠券计价", "phase": "T001", "role": "executor", "status": "TODO", "detail": "REFINE_BEFORE_EXECUTION",
+      "requirements": ["REQ-003"], "decisions": ["DEC-002"], "depends_on": ["T001-02"], "card": "docs/plan/tasks/T001-03.md",
+      "acceptance": [{ "id": "A1", "desc": "按 DEC-002 裁决结果计价", "check": { "type": "command", "cmd": "node test/coupon.test.js" } }] },
+    { "id": "T001-90", "title": "T001 阶段体检", "phase": "T001", "role": "tester", "status": "TODO", "detail": "READY",
+      "depends_on": ["T001-01", "T001-02", "T001-03"], "source": "阶段收口",
+      "acceptance": [{ "id": "A1", "desc": "阶段内全部测试通过或复用有效", "check": { "type": "command", "cmd": "node test/run-all.js" } }] }
+  ]
+}

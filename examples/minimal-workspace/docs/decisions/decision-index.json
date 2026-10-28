@@ -1,0 +1,6 @@
+{
+  "decisions": [
+    { "id": "DEC-001", "title": "金额统一以分为单位的整数存储", "status": "DECIDED", "decided_by": "user", "decided_at": "2026-10-20", "file": "docs/decisions/DEC-001.md", "applies_to": ["T001-01", "T001-02"] },
+    { "id": "DEC-002", "title": "优惠券是否可与满减叠加", "status": "OPEN", "file": "docs/decisions/DEC-002.md", "applies_to": ["T001-03"] }
+  ]
+}

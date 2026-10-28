@@ -1,0 +1,42 @@
+{
+  "schema": "product-development/config@2",
+  "project": "demo-shop",
+  "paths": {
+    "rules": "AGENTS.md",
+    "decision_index": "docs/decisions/decision-index.json",
+    "decision_dir": "docs/decisions",
+    "master_plan": "docs/plan/master-plan.md",
+    "task_index": "docs/plan/task-index.json",
+    "task_cards": "docs/plan/tasks",
+    "test_ledger": "docs/evidence/test-ledger.json",
+    "evidence": "docs/evidence",
+    "run_logs": "docs/plan/runs",
+    "prompts": ".product-development/prompts",
+    "requirements": "docs/requirements"
+  },
+  "roles": {
+    "planner": "Claude（全局规划、规划更新、裁决）",
+    "executor": "DeepSeek 等执行助手（实现 + 定向测试）",
+    "tester": "测试助手（门禁、阶段体检、回归、测试台账）"
+  },
+  "dependency_satisfied_by": [
+    "DONE",
+    "VERIFIED"
+  ],
+  "git": {
+    "main_branch": "main",
+    "task_branch_pattern": "task/{id}",
+    "auto_commit_each_task": true,
+    "auto_push_task_branch": false,
+    "push_main": true
+  },
+  "testing": {
+    "executor_scope": "targeted",
+    "phase_review_by": "tester",
+    "final_regression_by": "tester",
+    "reuse_unchanged": true
+  },
+  "replan": {
+    "max_commits_since_baseline": 30
+  }
+}
