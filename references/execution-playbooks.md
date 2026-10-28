@@ -24,7 +24,7 @@
 
 ```text
 [ ] 定向测试通过（真实运行，保存输出）
-[ ] 只暂存本卡文件；git fetch && git rebase origin/<主线>；一卡一提交，信息含任务 ID
+[ ] 只暂存本卡文件；git fetch 后 git rebase origin/<主线>（PowerShell 5.1 分两条）；一卡一提交，信息含任务 ID
 [ ] 推送 task/<ID>（或 config 规定的分支），禁止 --force
 [ ] 同步检查：git fetch 后 `git rev-parse HEAD` == `git rev-parse origin/<分支>`，工作区干净
 [ ] pd.mjs record：TEST_RUN → COMMITTED(--commit) → PUSHED → DONE；核验写入成功

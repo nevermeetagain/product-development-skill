@@ -1,8 +1,11 @@
 // product-development 辅助脚本公共库（零第三方依赖，Node >= 18）
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
+
+export const IS_WIN = process.platform === 'win32';
 
 export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'DONE', 'VERIFIED', 'BLOCKED', 'FAILED', 'SUPERSEDED'];
 export const DONE_LIKE = ['DONE', 'VERIFIED'];
@@ -28,13 +31,126 @@ export function nowIso() {
 }
 export const stamp = () => nowIso().replace(/[-:TZ]/g, '').slice(0, 14);
 
+// ------------------------------------------------------------ 跨平台：路径、文本、写盘
+/** 存储用路径一律 POSIX：反斜杠转 /，去掉开头 ./（Windows 上 path.join/relative 产生的 \\ 不写进台账/索引） */
+export function toPosix(p) {
+  if (p === undefined || p === null) return p;
+  return String(p).replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/{2,}/g, '/');
+}
+/** 逗号分隔的路径列表 → 去重的 POSIX 路径数组 */
+export function pathList(s) {
+  return [...new Set(String(s || '').split(/[,，]/).map((x) => toPosix(x.trim())).filter(Boolean))];
+}
+/** 读文本：去 UTF-8 BOM（Windows PowerShell 5 / 记事本常写 BOM） */
+export function readText(file) {
+  return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+}
+/** 文件主导换行符：CRLF 多于 LF 时返回 \r\n（写回时保持原样，避免 Windows 仓库整文件变动） */
+export function detectEol(text) {
+  const crlf = (text.match(/\r\n/g) || []).length;
+  const lf = (text.match(/\n/g) || []).length - crlf;
+  return crlf > lf ? '\r\n' : '\n';
+}
 export function readJson(file) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  try { return JSON.parse(readText(file)); }
   catch (e) { throw new Error(`无法读取 JSON：${file}（${e.message}）`); }
 }
-export function writeJson(file, data) {
+function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch { /* 忽略 */ } }
+/**
+ * 原子写：先写同目录临时文件再 rename；Windows 上目标被编辑器/杀毒软件短暂占用时 rename 会 EPERM/EBUSY，
+ * 退避重试 5 次，仍失败则直接覆盖写（保证不丢数据），并清理临时文件。
+ */
+export function writeText(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n', 'utf8');
+  const tmp = `${file}.${process.pid}.${Date.now().toString(36)}.tmp`;
+  fs.writeFileSync(tmp, text, 'utf8');
+  for (let i = 0; i < 6; i++) {
+    try { fs.renameSync(tmp, file); return; }
+    catch (e) {
+      if (!['EPERM', 'EBUSY', 'EACCES', 'EEXIST'].includes(e.code)) { try { fs.unlinkSync(tmp); } catch { /* 忽略 */ } throw e; }
+      sleepMs(50 * (i + 1));
+    }
+  }
+  try { fs.writeFileSync(file, text, 'utf8'); } finally { try { fs.unlinkSync(tmp); } catch { /* 忽略 */ } }
+}
+/** JSON 写回：保持文件原有换行符（新文件用 LF），末尾换行 */
+export function writeJson(file, data) {
+  let eol = '\n';
+  try { eol = detectEol(fs.readFileSync(file, 'utf8')); } catch { /* 新文件 */ }
+  const body = JSON.stringify(data, null, 2) + '\n';
+  writeText(file, eol === '\n' ? body : body.replace(/\n/g, '\r\n'));
+}
+
+/** 主目录：os.homedir()（Windows 为 %USERPROFILE%），兼容 HOME 覆盖 */
+export function homeDir() { return os.homedir() || process.env.HOME || process.env.USERPROFILE || ''; }
+
+/**
+ * 展开检测路径：~ / %VAR% / $VAR / ${VAR} / 以 ./ 开头的项目相对路径；统一用 path.join 拼接
+ * Windows 下 ~/.claude 即 %USERPROFILE%\.claude；设置了 CLAUDE_CONFIG_DIR / CODEX_HOME 时由 detectCandidates 额外检查。
+ */
+export function expandPath(p, root = '.') {
+  let s = String(p)
+    .replace(/%([A-Za-z_][A-Za-z0-9_]*)%/g, (m, k) => (process.env[k] ?? m))
+    .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k) => (process.env[k] ?? m))
+    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (m, k) => (process.env[k] ?? m));
+  if (!IS_WIN) s = s.replace(/\\/g, '/'); // 配置里写的 Windows 分隔符在 POSIX 上也能用
+  if (/^~(?=[\/\\]|$)/.test(s)) return path.join(homeDir(), s.slice(1));
+  if (path.isAbsolute(s) || /^[A-Za-z]:[\/\\]/.test(s)) return path.normalize(s);
+  return path.join(path.resolve(root), s.replace(/^\.[\/\\]/, ''));
+}
+/** 一个检测路径的所有候选：~/.claude/* 兼容 CLAUDE_CONFIG_DIR，~/.codex/* 兼容 CODEX_HOME */
+export function detectCandidates(p, root = '.') {
+  const out = [expandPath(p, root)];
+  const m = String(p).match(/^~[\/\\]\.(claude|codex)(?=[\/\\]|$)(.*)$/);
+  const alt = m && (m[1] === 'claude' ? process.env.CLAUDE_CONFIG_DIR : process.env.CODEX_HOME);
+  if (alt) out.push(path.join(alt, m[2] || ''));
+  return out;
+}
+/** 在 PATH 中查找可执行文件（Windows 按 PATHEXT 补 .cmd/.exe 等），等价于 command -v / Get-Command */
+export function which(cmd) {
+  const exts = IS_WIN ? ['', ...(process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)] : [''];
+  for (const dir of (process.env.PATH || process.env.Path || '').split(path.delimiter).filter(Boolean)) {
+    for (const ext of exts) {
+      const f = path.join(dir, cmd + ext);
+      try { if (fs.statSync(f).isFile()) return f; } catch { /* 下一个 */ }
+    }
+  }
+  return null;
+}
+/** 支持 * 与 ** 的存在性检查（** 最多下探 maxDepth 层，避免扫全盘）；返回首个命中路径或 null */
+export function globFirst(pattern, maxDepth = 6) {
+  const abs = path.resolve(pattern);
+  if (!/[*?]/.test(abs)) return fs.existsSync(abs) ? abs : null;
+  const parts = abs.split(/[\/\\]+/);
+  let base = parts.shift();
+  base = base === '' ? path.sep : base + path.sep; // POSIX 根 或 Windows 盘符
+  const toRe = (seg) => new RegExp('^' + seg.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', IS_WIN ? 'i' : '');
+  const list = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }); } catch { return []; } };
+  const walk = (dir, i, budget) => {
+    if (i === parts.length) return fs.existsSync(dir) ? dir : null;
+    const seg = parts[i];
+    if (seg === '**') {
+      const here = walk(dir, i + 1, budget); if (here) return here;
+      if (budget <= 0) return null;
+      for (const e of list(dir)) if (e.isDirectory()) { const r = walk(path.join(dir, e.name), i, budget - 1); if (r) return r; }
+      return null;
+    }
+    if (!/[*?]/.test(seg)) return walk(path.join(dir, seg), i + 1, budget);
+    const re = toRe(seg);
+    for (const e of list(dir)) if (re.test(e.name)) { const r = walk(path.join(dir, e.name), i + 1, budget); if (r) return r; }
+    return null;
+  };
+  return walk(base, 0, maxDepth);
+}
+/** 大小写敏感的存在性检查：Windows/macOS 文件系统不区分大小写，但 Git 区分；不一致时指纹会判为 missing */
+export function existsExactCase(root, rel) {
+  let dir = path.resolve(root);
+  for (const seg of toPosix(rel).split('/').filter(Boolean)) {
+    let names; try { names = fs.readdirSync(dir); } catch { return false; }
+    if (!names.includes(seg)) return false;
+    dir = path.join(dir, seg);
+  }
+  return true;
 }
 
 // ------------------------------------------------------------ markdown 表格适配（老项目不搬家）
@@ -53,7 +169,7 @@ function splitRow(line) {
 
 /** 读取文件里所有含 idColumn 表头的 markdown 表格 */
 export function readMdTables(file, idColumn) {
-  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+  const lines = readText(file).split(/\r?\n/);
   const out = [];
   for (let i = 0; i < lines.length - 1; i++) {
     if (!lines[i].trim().startsWith('|')) continue;
@@ -74,7 +190,10 @@ export function readMdTables(file, idColumn) {
 
 /** 读取文件里第一张含 idColumn 表头的 markdown 表格 */
 export function readMdTable(file, idColumn) {
-  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+  const raw = fs.readFileSync(file, 'utf8');
+  const bom = raw.startsWith('\uFEFF') ? '\uFEFF' : '';
+  const eol = detectEol(raw);
+  const lines = raw.replace(/^\uFEFF/, '').split(/\r?\n/);
   for (let i = 0; i < lines.length - 1; i++) {
     if (!lines[i].trim().startsWith('|')) continue;
     const head = splitRow(lines[i]);
@@ -85,7 +204,7 @@ export function readMdTable(file, idColumn) {
       const row = {}; head.forEach((h, k) => { row[h] = cells[k] ?? ''; });
       rows.push({ line: j, row });
     }
-    return { head, rows, lines };
+    return { head, rows, lines, eol, bom };
   }
   throw new Error(`在 ${file} 中找不到表头含「${idColumn}」的 markdown 表格`);
 }
@@ -119,7 +238,7 @@ function loadMdTasks(ws, fmt) {
     task.execution = { commits: shas.slice(0, 1) };
     if (status === 'BLOCKED') task.blocked_reason = statusCell;
     if (fmt.cards_dir) {
-      const f = path.join(fmt.cards_dir, `${task.id}.md`);
+      const f = toPosix(path.posix.join(toPosix(fmt.cards_dir), `${task.id}.md`));
       if (fs.existsSync(path.join(ws.root, f))) task.card = f;
     }
     return task;
@@ -132,7 +251,7 @@ function loadMdDecisions(ws, fmt) {
   const sources = fmt.sources || [].concat(ws.config.paths.decision_index).map((p) => ({ path: p }));
   const out = []; const seen = new Set();
   for (const src of sources) {
-    const file = path.join(ws.root, src.path);
+    const file = path.join(ws.root, toPosix(src.path));
     if (!fs.existsSync(file)) continue;
     const idCol = src.id_column || fmt.columns?.id || 'ID';
     const titleCol = src.title_column || fmt.columns?.title || 'title';
@@ -145,7 +264,7 @@ function loadMdDecisions(ws, fmt) {
       seen.add(id);
       let st = fmt.columns?.status && row[fmt.columns.status] !== undefined ? mapStatus(row[fmt.columns.status], fmt.status_map) : dflt;
       if (openRe && openRe.test(text)) st = 'OPEN';
-      out.push({ id, title: (row[titleCol] || Object.values(row)[1] || '').slice(0, 80), status: DECISION_STATUS.includes(st) ? st : dflt, decided_by: 'legacy', file: src.path, _row: text });
+      out.push({ id, title: (row[titleCol] || Object.values(row)[1] || '').slice(0, 80), status: DECISION_STATUS.includes(st) ? st : dflt, decided_by: 'legacy', file: toPosix(src.path), _row: text });
     }
   }
   return { decisions: out, _format: 'markdown-table' };
@@ -159,7 +278,7 @@ export function loadWorkspace(root) {
   const config = readJson(cfgFile);
   const p = (k) => {
     const v = config.paths?.[k];
-    return typeof v === 'string' ? path.join(root, v) : null;
+    return typeof v === 'string' ? path.join(root, toPosix(v)) : null;
   };
   const ws = { root, config, cfgFile, p };
   ws.taskIndexFile = p('task_index');
@@ -175,11 +294,11 @@ export function loadWorkspace(root) {
   } else ws.decisions = { decisions: [] };
   // 额外决策来源（如多个 ADR 目录、待裁决清单）：只登记 ID 存在性
   for (const extra of config.decision_sources || []) {
-    const dir = path.join(root, extra.dir);
+    const dir = path.join(root, toPosix(extra.dir));
     if (!fs.existsSync(dir)) continue;
     for (const f of fs.readdirSync(dir)) {
       const m = f.match(new RegExp(extra.id_pattern || '^(ADR-\\d+)'));
-      if (m && !ws.decisions.decisions.some((d) => d.id === m[1])) ws.decisions.decisions.push({ id: m[1], title: f, status: extra.status || 'DECIDED', decided_by: 'legacy', file: path.join(extra.dir, f) });
+      if (m && !ws.decisions.decisions.some((d) => d.id === m[1])) ws.decisions.decisions.push({ id: m[1], title: f, status: extra.status || 'DECIDED', decided_by: 'legacy', file: toPosix(path.posix.join(toPosix(extra.dir), f)) });
     }
   }
   ws.ledger = ws.testLedgerFile && fs.existsSync(ws.testLedgerFile) ? readJson(ws.testLedgerFile) : { entries: [] };
@@ -204,21 +323,28 @@ export function saveTasks(ws, changedIds) {
     cells[statusIdx] = cellText;
     lines[task._md.line] = '| ' + cells.join(' | ') + ' |';
   }
-  fs.writeFileSync(ws.taskIndexFile, lines.join('\n'), 'utf8');
+  writeText(ws.taskIndexFile, (t.bom || '') + lines.join(t.eol || '\n'));
 }
 
+// core.quotepath=false：中文文件名按 UTF-8 原样输出（否则是 "\344\273..." 八进制转义）
+const GIT_BASE = ['-c', 'core.quotepath=false'];
+let gitMissing = false;
+/** git 是否可用（Windows 需安装 Git for Windows 并在 PATH 中） */
+export function gitAvailable() { if (!gitMissing) git('.', ['--version']); return !gitMissing; }
 export function git(root, args, { allowFail = true } = {}) {
   try {
-    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync('git', [...GIT_BASE, ...args], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).replace(/\r\n/g, '\n').trim();
   } catch (e) {
+    if (e.code === 'ENOENT') gitMissing = true;
     if (allowFail) return null;
     throw e;
   }
 }
 /** 带错误原文的 git 调用（推送等需要把报错告诉用户的场景） */
 export function gitRun(root, args) {
-  const r = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-  return { ok: r.status === 0, out: (r.stdout || '').trim(), err: (r.stderr || '').trim().split('\n').slice(-3).join(' | ') };
+  const r = spawnSync('git', [...GIT_BASE, ...args], { cwd: root, encoding: 'utf8', windowsHide: true });
+  if (r.error?.code === 'ENOENT') gitMissing = true;
+  return { ok: r.status === 0, out: (r.stdout || '').trim(), err: (r.stderr || r.error?.message || '').trim().split(/\r?\n/).slice(-3).join(' | ') };
 }
 export function gitInfo(root) {
   return {
@@ -233,14 +359,22 @@ export function commitExists(root, sha) {
   return git(root, ['cat-file', '-e', `${sha}^{commit}`]) !== null;
 }
 
-/** 内容指纹：覆盖路径在给定提交上的 git 对象哈希摘要；路径不存在记为 missing */
+/**
+ * 内容指纹：覆盖路径在给定提交上的 git 对象哈希摘要；路径不存在记为 missing。
+ * 用 git 对象哈希（blob/tree 存的是 Git 规范化后的内容，与工作区 CRLF/autocrlf 无关），
+ * 路径先转 POSIX，所以 Windows 与 Linux 对同一提交算出同一指纹。
+ */
 export function fingerprint(root, paths, rev = 'HEAD') {
   const parts = [];
-  for (const p of [...paths].sort()) {
-    const h = git(root, ['rev-parse', `${rev}:${p.replace(/\\/g, '/').replace(/\/$/, '')}`]);
+  for (const p of [...paths].map(toPosix).sort()) {
+    const h = git(root, ['rev-parse', `${rev}:${p.replace(/\/$/, '')}`]);
     parts.push(`${p}=${h ?? 'missing'}`);
   }
   return 'sha256:' + crypto.createHash('sha256').update(parts.join('\n')).digest('hex').slice(0, 32);
+}
+/** 覆盖路径中在给定提交里不存在的项（未提交、拼错，或 Windows/macOS 上大小写与 Git 记录不一致） */
+export function missingAtRev(root, paths, rev = 'HEAD') {
+  return [...paths].map(toPosix).filter((p) => git(root, ['rev-parse', '--verify', '-q', `${rev}:${p.replace(/\/$/, '')}`]) === null);
 }
 
 export function scanSecrets(text) {

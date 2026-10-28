@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { toPosix, pathList, fingerprint, writeJson, readJson, expandPath, globFirst, which, detectCandidates, existsExactCase, detectEol } from './lib.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pd = path.join(here, 'pd.mjs');
@@ -258,6 +259,83 @@ console.log('16. 防泄露守卫（.env / 数据导出）');
   fs.writeFileSync(path.join(w, '.gitignore'), 'node_modules/\n');
   x = run(w, 'health', '.');
   ok('.gitignore 缺规则时提醒', /防泄露规则：\.env \*\.dump \*_dump\.sql/.test(x.stdout), x.stdout);
+}
+
+console.log('17. 跨平台（Windows / Ubuntu）');
+{
+  ok('toPosix 把反斜杠与 ./ 归一', toPosix('.\\src\\a.js') === 'src/a.js' && toPosix('src/a.js') === 'src/a.js' && toPosix('a\\\\b') === 'a/b');
+  ok('pathList 去空格去重并转 POSIX', JSON.stringify(pathList('src\\a.js, ./src/a.js ,test\\b.js')) === '["src/a.js","test/b.js"]');
+  const w = fresh();
+  ok('指纹与分隔符无关（\\ 与 / 相同）', fingerprint(w, ['src\\price.js', 'test\\price.test.js']) === fingerprint(w, ['src/price.js', 'test/price.test.js']));
+  let x = run(w, 'test-record', '.', '--target', 'T001-01', '--scope', 'task', '--kind', 'targeted', '--result', 'PASS', '--paths', 'src\\price.js,test\\price.test.js', '--cmd', 'npm test', '--evidence', 'docs\\evidence\\x.txt');
+  const led = JSON.parse(fs.readFileSync(path.join(w, 'docs/evidence/test-ledger.json'), 'utf8'));
+  const e = led.entries.at(-1);
+  ok('台账 covers_paths / evidence 存为 POSIX', x.status === 0 && JSON.stringify(e.covers_paths) === '["src/price.js","test/price.test.js"]' && e.evidence === 'docs/evidence/x.txt', JSON.stringify(e) + x.stderr);
+  ok('台账写入不残留临时文件', !fs.readdirSync(path.join(w, 'docs/evidence')).some((f) => f.endsWith('.tmp')));
+  git(w, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qam', 'l');
+  x = run(w, 'test-plan', '.');
+  ok('反斜杠登记的测试可被复用', /可复用.*T001-01/.test(x.stdout), x.stdout);
+  x = run(w, 'test-record', '.', '--target', 'T001-01', '--scope', 'task', '--kind', 'targeted', '--result', 'PASS', '--paths', 'SRC/Price.js', '--cmd', 'node t');
+  ok('覆盖路径大小写与 Git 不一致时提醒', /HEAD 中不存在：SRC\/Price\.js/.test(x.stdout), x.stdout);
+  ok('existsExactCase 区分大小写', existsExactCase(w, 'src/price.js') && !existsExactCase(w, 'SRC/price.js'));
+
+  // autocrlf：同一内容在 CRLF 工作区（autocrlf=true）与 LF 工作区提交，指纹一致
+  const a = fs.mkdtempSync(path.join(os.tmpdir(), 'pd-crlf-a-'));
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'pd-crlf-b-'));
+  for (const [dir, crlf, eolv] of [[a, 'true', '\r\n'], [b, 'false', '\n']]) {
+    git(dir, 'init', '-q', '-b', 'main'); git(dir, 'config', 'core.autocrlf', crlf);
+    fs.mkdirSync(path.join(dir, 'src')); fs.writeFileSync(path.join(dir, 'src/a.js'), ['export const a = 1;', 'export const b = 2;', ''].join(eolv));
+    git(dir, 'add', '-A'); git(dir, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'i');
+  }
+  ok('指纹基于 Git 对象，CRLF/autocrlf 不影响', fingerprint(a, ['src/a.js']) === fingerprint(b, ['src/a.js']) && !/missing/.test(fingerprint(a, ['src/a.js'])));
+
+  // JSON：BOM + CRLF 可读，写回保持 CRLF
+  const v = fresh();
+  for (const rel of ['docs/plan/task-index.json', '.product-development/config.json']) {
+    const f = path.join(v, rel); fs.writeFileSync(f, '\uFEFF' + fs.readFileSync(f, 'utf8').replace(/\r?\n/g, '\r\n'));
+  }
+  x = run(v, 'health', '.');
+  ok('BOM + CRLF 的 JSON 可体检', x.status === 0, x.stdout + x.stderr);
+  x = run(v, 'record', '.', '--task', 'T001-02', '--event', 'STARTED');
+  const ti = fs.readFileSync(path.join(v, 'docs/plan/task-index.json'), 'utf8');
+  ok('JSON 写回保持 CRLF 且可解析', x.status === 0 && detectEol(ti) === '\r\n' && readJson(path.join(v, 'docs/plan/task-index.json')).tasks[1].status === 'IN_PROGRESS', x.stderr);
+
+  // Markdown 表格：CRLF + BOM，只改目标单元格，换行与 BOM 原样保留
+  const m = fs.mkdtempSync(path.join(os.tmpdir(), 'pd-mdcrlf-'));
+  fs.mkdirSync(path.join(m, '.product-development')); fs.mkdirSync(path.join(m, 'docs'));
+  fs.writeFileSync(path.join(m, 'docs/task-index.md'), '\uFEFF' + ['# 任务', '', '| ID | title | depends_on | status |', '|---|---|---|---|', '| T1-01 | 甲 | — | TODO |', '| T1-02 | 乙 | T1-01 | TODO |', ''].join('\r\n'));
+  fs.writeFileSync(path.join(m, 'docs/ledger.md'), '| ID | title |\r\n|---|---|\r\n| D-001 | 主线 |\r\n');
+  writeJson(path.join(m, '.product-development/config.json'), { paths: { task_index: 'docs\\task-index.md', decision_index: 'docs/ledger.md', test_ledger: 'docs/test-ledger.json' },
+    formats: { task_index: { type: 'markdown-table' }, decision_index: { type: 'markdown-table' } } });
+  git(m, 'init', '-q', '-b', 'main'); git(m, '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '-A'); git(m, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'i');
+  x = run(m, 'record', '.', '--task', 'T1-01', '--event', 'STARTED');
+  const mdTxt = fs.readFileSync(path.join(m, 'docs/task-index.md'), 'utf8');
+  ok('CRLF+BOM 的 Markdown 索引回写保留换行与 BOM', x.status === 0 && mdTxt.startsWith('\uFEFF') && !/[^\r]\n/.test(mdTxt) && /\| T1-01 \| 甲 \| — \| IN_PROGRESS \|\r\n/.test(mdTxt) && /\| T1-02 \| 乙 \| T1-01 \| TODO \|\r\n/.test(mdTxt), JSON.stringify(mdTxt) + x.stderr);
+  ok('config 中反斜杠路径可用', /T1-01 当前状态 IN_PROGRESS/.test(x.stdout), x.stdout);
+
+  // 中文路径：git core.quotepath=false，防泄露守卫能识别中文目录下的导出文件
+  const c = fresh();
+  fs.mkdirSync(path.join(c, '数据')); fs.writeFileSync(path.join(c, '数据/prod_dump.sql'), 'x');
+  git(c, 'add', '-f', '数据/prod_dump.sql'); git(c, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'cn');
+  x = run(c, 'health', '.');
+  ok('中文路径下的导出文件被识别（quotepath）', x.status === 1 && /不应提交的文件：数据\/prod_dump\.sql/.test(x.stdout), x.stdout);
+
+  // 检测路径展开：~ / %VAR% / $VAR / ** / PATH 查找 / CLAUDE_CONFIG_DIR
+  const h = fs.mkdtempSync(path.join(os.tmpdir(), 'pd-home-'));
+  ok('~ 展开为 os.homedir()', expandPath('~/.agents/skills') === path.join(os.homedir(), '.agents', 'skills'));
+  process.env.PD_SELFTEST_DIR = h;
+  ok('%VAR% / $VAR / ${VAR} 展开', expandPath('%PD_SELFTEST_DIR%/x') === path.join(h, 'x') && expandPath('$PD_SELFTEST_DIR/x') === path.join(h, 'x') && expandPath('${PD_SELFTEST_DIR}\\x') === path.join(h, 'x'));
+  ok('./ 相对项目根用 path.join 拼接', expandPath('./.agents/skills', h) === path.join(h, '.agents', 'skills'));
+  fs.mkdirSync(path.join(h, 'plugins', 'cache', 'm', 'superpowers'), { recursive: true });
+  ok('** 通配可检测插件目录', globFirst(path.join(h, 'plugins', '**', 'superpowers')) !== null && globFirst(path.join(h, 'plugins', '**', 'nope')) === null);
+  ok('which 按 PATH（Windows 含 PATHEXT）找到 node', which('node') !== null);
+  ok('CLAUDE_CONFIG_DIR 作为 ~/.claude 的候选', (() => { process.env.CLAUDE_CONFIG_DIR = h; const r = detectCandidates('~/.claude/plugins/x', '.'); delete process.env.CLAUDE_CONFIG_DIR; return r.includes(path.join(h, 'plugins', 'x')); })());
+  fs.mkdirSync(path.join(h, '.agents', 'skills', 'brainstorming'), { recursive: true });
+  fs.writeFileSync(path.join(h, '.agents', 'skills', 'brainstorming', 'SKILL.md'), '#');
+  fs.mkdirSync(path.join(h, 'cc', 'plugins', 'cache', 'code-review'), { recursive: true });
+  x = spawnSync(process.execPath, [pd, 'skills', '.'], { cwd: h, encoding: 'utf8', env: { ...process.env, HOME: h, USERPROFILE: h, CLAUDE_CONFIG_DIR: path.join(h, 'cc') } });
+  ok('skills 在 HOME/USERPROFILE 下检测到已装 Skill，CLAUDE_CONFIG_DIR 生效', x.status === 0 && /✓ superpowers\/brainstorming/.test(x.stdout) && /✓ code-review/.test(x.stdout) && /✗ openspec/.test(x.stdout), x.stdout + x.stderr);
+  ok('skills 按平台输出安装命令', process.platform === 'win32' ? /Copy-Item/.test(x.stdout) : /cp -r/.test(x.stdout), x.stdout);
 }
 
 console.log('15. 状态汇报');

@@ -1,0 +1,72 @@
+# 一次性跨平台兼容性检查（不是门禁）：Ubuntu + Windows × Node 18 / 22
+name: self-test
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  self-test:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['18', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Environment
+        shell: bash
+        run: |
+          node --version
+          git --version
+          git config --show-origin --get core.autocrlf || true
+      - name: Self-test
+        run: node scripts/self-test.mjs
+      - name: Bash installer (Ubuntu)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          dest="$RUNNER_TEMP/pd-skills-sh"
+          bash scripts/install.sh both --dir "$dest"
+          test -f "$dest/product-development/SKILL.md"
+          test ! -e "$dest/product-development/examples"
+          bash scripts/install.sh --dir "$dest" --force
+          ls "$dest"
+          HOME="$RUNNER_TEMP/pd-home" bash scripts/install.sh both
+          test -f "$RUNNER_TEMP/pd-home/.claude/skills/product-development/scripts/pd.mjs"
+          test -f "$RUNNER_TEMP/pd-home/.agents/skills/product-development/scripts/pd.mjs"
+          node "$dest/product-development/scripts/pd.mjs" skills "$RUNNER_TEMP"
+      - name: PowerShell installer (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dest = Join-Path $env:RUNNER_TEMP 'pd-skills-ps'
+          .\scripts\install.ps1 -Target Both -Dir $dest
+          if (-not (Test-Path (Join-Path $dest 'product-development\SKILL.md'))) { throw 'SKILL.md missing' }
+          if (Test-Path (Join-Path $dest 'product-development\examples')) { throw 'examples should not be installed' }
+          .\scripts\install.ps1 -Dir $dest -Force
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'pd-home'
+          New-Item -ItemType Directory -Force $env:USERPROFILE | Out-Null
+          .\scripts\install-user.ps1 -Target Both
+          foreach ($b in '.claude', '.agents') {
+            $f = Join-Path $env:USERPROFILE "$b\skills\product-development\scripts\pd.mjs"
+            if (-not (Test-Path $f)) { throw "missing $f" }
+          }
+          node (Join-Path $dest 'product-development\scripts\pd.mjs') skills $env:RUNNER_TEMP
+          if ($LASTEXITCODE -ne 0) { throw "pd.mjs skills exit $LASTEXITCODE" }
+      - name: PowerShell 7 + cmd shim (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:RUNNER_TEMP 'pd-skills-pwsh'
+          ./scripts/install.ps1 Codex -Dir $dest
+          if (-not (Test-Path (Join-Path $dest 'product-development/scripts/pd.mjs'))) { throw 'pwsh install failed' }
+          cmd /c "scripts\install.cmd both --dir `"$env:RUNNER_TEMP\pd-skills-cmd`""
+          if ($LASTEXITCODE -ne 0) { throw "install.cmd exit $LASTEXITCODE" }
+          if (-not (Test-Path (Join-Path $env:RUNNER_TEMP 'pd-skills-cmd/product-development/SKILL.md'))) { throw 'cmd shim install failed' }

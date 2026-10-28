@@ -20,6 +20,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/brainstorming/SKILL.md",
       ".agents/skills/brainstorming/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -43,6 +48,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/writing-plans/SKILL.md",
       ".agents/skills/writing-plans/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -66,6 +76,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/executing-plans/SKILL.md",
       ".agents/skills/executing-plans/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -90,6 +105,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/test-driven-development/SKILL.md",
       ".agents/skills/test-driven-development/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -113,6 +133,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/systematic-debugging/SKILL.md",
       ".agents/skills/systematic-debugging/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -136,6 +161,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/verification-before-completion/SKILL.md",
       ".agents/skills/verification-before-completion/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -159,6 +189,11 @@
       "~/.claude/plugins/**/superpowers",
       "~/.agents/skills/requesting-code-review/SKILL.md",
       ".agents/skills/requesting-code-review/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/obra/superpowers.git \"$env:TEMP\\superpowers\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\superpowers\\skills\\*\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -183,7 +218,7 @@
       "openspec init"
     ],
     "detect_paths": [
-      "$(command -v openspec)",
+      "cmd:openspec",
       "openspec/"
     ]
   },
@@ -231,7 +266,7 @@
       "npm install -g @opengsd/gsd-pi@latest"
     ],
     "detect_paths": [
-      "$(command -v gsd)",
+      "cmd:gsd",
       "~/.gsd/"
     ]
   },
@@ -283,6 +318,11 @@
       "~/.claude/plugins/**/example-skills",
       "~/.agents/skills/frontend-design/SKILL.md",
       "~/.claude/skills/frontend-design/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\frontend-design\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -308,6 +348,11 @@
       "~/.claude/plugins/**/example-skills",
       "~/.agents/skills/doc-coauthoring/SKILL.md",
       "~/.claude/skills/doc-coauthoring/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\doc-coauthoring\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -333,6 +378,11 @@
       "~/.claude/plugins/**/example-skills",
       "~/.agents/skills/webapp-testing/SKILL.md",
       "~/.claude/skills/webapp-testing/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\webapp-testing\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {
@@ -357,6 +407,11 @@
       "~/.claude/plugins/**/example-skills",
       "~/.agents/skills/skill-creator/SKILL.md",
       "~/.claude/skills/skill-creator/SKILL.md"
+    ],
+    "generic_install_windows": [
+      "git clone --depth 1 https://github.com/anthropics/skills.git \"$env:TEMP\\anthropic-skills\"",
+      "New-Item -ItemType Directory -Force \"$HOME\\.agents\\skills\" | Out-Null",
+      "Copy-Item -Recurse -Force \"$env:TEMP\\anthropic-skills\\skills\\skill-creator\" \"$HOME\\.agents\\skills\\\""
     ]
   },
   {

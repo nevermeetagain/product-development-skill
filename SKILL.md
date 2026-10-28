@@ -3,10 +3,24 @@ name: product-development
 description: 统一的 AI 产品开发工作流：产品讨论、决策固化、一次性全量规划、执行前细化、多助手执行、专职测试与测试复用、规划更新与裁决、Git 交接。用于“和我讨论/记录决定/规划全部剩余任务/执行某张任务卡/验收或体检/重新规划/汇报进度”等请求。核心：有据可依，行为留痕。
 ---
 
-# Product Development：统一产品开发工作流（v0.4.1）
+# Product Development：统一产品开发工作流（v0.4.2）
 
 一个入口，按意图和项目状态选择**最小且足够**的流程。不要每次把所有阶段走一遍。
 本 Skill 是工作规范；文件、终端、Git、网络权限取决于当前工具。随包脚本 `scripts/pd.mjs` 做确定性检查（体检、选下一任务、生成提示词、留痕、测试复用判断）。
+
+## 跨平台
+脚本需要 Node.js 18+ 与 Git，Windows（PowerShell / cmd / Git Bash）与 Ubuntu/macOS 命令相同，只是路径分隔符写法不同：
+
+| PowerShell / cmd | bash |
+|---|---|
+| `node <skill>\scripts\pd.mjs health .` | `node <skill>/scripts/pd.mjs health .` |
+| `node <skill>\scripts\pd.mjs record . --task T1-01 --event TEST_RUN --cmd 'npm test' --paths 'src/a.js,test/a.test.js' --result PASS` | 同左，参数用单引号或双引号均可 |
+| `Get-Command node` | `command -v node` |
+| `git fetch` 再 `git rebase origin/main`（PowerShell 5.1 不支持 `&&`） | `git fetch && git rebase origin/main` |
+
+- 写入任务索引/台账/日志的路径一律用 `/`；脚本会把 `\` 归一。不要手写反斜杠路径进 JSON。
+- `--cmd` 只是**登记**实际执行过的命令原文，脚本不会代为执行；命令先在当前终端真实跑通再登记。PowerShell 5.1 里命令本身含双引号时，外层用单引号。
+- Windows 下中文输出被管道/变量捕获出现乱码时，先 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`。详见 `references/config-reference.md`。
 
 ## 0. 四条底线（任何模式、任何角色）
 

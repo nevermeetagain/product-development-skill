@@ -113,6 +113,7 @@
 5. 先检测再装：任一 detect_path 存在、或 `/plugin` 列表 / 工具 skills 列表已有即视为已装，跳过。只装当前阶段/任务类型路由到的 Skill（§1），不预装全部。
 6. Claude Code 中 `/plugin …` 斜杠命令若代理无法直接执行，用等价 CLI：`claude plugin marketplace add …` / `claude plugin install …`；装完提示需重启/新会话生效。
 7. 其他 CLI（Codex、Cursor、OpenCode 等）：Codex 个人 skills 读 `~/.agents/skills/`（项目级 `.agents/skills/`）；`npx skills add … -g` 会装到这里。
+8. Windows：`~` 即 `%USERPROFILE%`；下表“手动”列里的 `git clone … /tmp/X && mkdir -p … && cp -r …` 在 PowerShell 中对应 `git clone --depth 1 <仓库> "$env:TEMP\X"`、`New-Item -ItemType Directory -Force "$HOME\.agents\skills"`、`Copy-Item -Recurse -Force "$env:TEMP\X\skills\*" "$HOME\.agents\skills\"`；`command -v X` 对应 `Get-Command X`。`pd.mjs skills` 在 Windows 上会直接输出 PowerShell 版命令。
 
 | Skill | 仓库（已打开） | Claude Code | Codex / 其他 CLI | 已安装检测 |
 |---|---|---|---|---|

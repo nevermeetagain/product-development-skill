@@ -1,5 +1,20 @@
 # 变更记录
 
+## 0.4.2（2026-10-28）
+
+跨平台兼容（Windows PowerShell/cmd/Git Bash + Ubuntu），并在 GitHub Actions 真实 runner 上验证：
+- 路径：台账/索引/日志里存的路径统一为 POSIX（`toPosix`/`pathList`），`--paths 'src\a.js'` 自动转 `src/a.js`；config 里写反斜杠也能读；显示用相对路径统一 `/`；`scan` 在 Windows 上的规则匹配修正。
+- 指纹：路径先归一再排序，继续用 Git 对象哈希（与 CRLF/`core.autocrlf` 无关）；覆盖路径在 HEAD 不存在（未提交/大小写不一致）时提醒。
+- 文本：读 JSON/Markdown 去 UTF-8 BOM、容忍 CRLF；Markdown 表格与 JSON 写回保持原换行和 BOM；台账/索引改为临时文件 + rename 原子写，Windows 上 EPERM/EBUSY 退避重试。
+- Git：固定 `core.quotepath=false`（中文路径不再被转义，防泄露守卫能识别中文目录下的导出文件）；`windowsHide`；找不到 git 时 `health` 明确提醒。
+- `pd.mjs skills`：修复 Windows 上 `URL.pathname` 得到 `/C:/…` 导致找不到登记表；`~` 用 `os.homedir()`；支持 `%VAR%`/`$VAR`/`${VAR}`、`*`/`**` 通配、`cmd:<名>` 按 PATH/PATHEXT 查找（替代无法生效的 `$(command -v …)`）、`CLAUDE_CONFIG_DIR`/`CODEX_HOME`；Windows 上输出 `generic_install_windows` 的 PowerShell 命令。
+- 入口：Node < 18 直接报错；`scan`/`skills` 不再 `process.exit`（避免 Windows 控制台输出被截断）。
+- 安装：新增 `install.ps1`（PowerShell 5.1/7，UTF-8 BOM + CRLF，`-Target -Force -Dir`）与 `install.cmd`（cmd 转调）；`install.sh` 增加 `--dir`、支持 `CLAUDE_CONFIG_DIR`，二者都只复制 Skill 文件（此前 `install.sh` 会把 `.git` 一并复制）；`install-user.ps1` 保留为旧入口。
+- 新增 `.gitattributes`（md/json/mjs/js/sh/yml 为 LF，ps1/cmd/bat 为 CRLF）。
+- 文档：README、SKILL.md 新增“跨平台”节（PowerShell 与 bash 对照）；`config-reference.md` 新增“Windows 注意事项”；`&&` 写法补 PowerShell 5.1 分条说明；代理配置补 bash；明确 `--cmd` 只登记不执行。
+- 新增 `.github/workflows/self-test.yml`：ubuntu-latest + windows-latest × Node 18/22 跑自测，并在 Windows 上跑 PowerShell 5.1/7 与 cmd 安装器、在 Ubuntu 上跑 bash 安装器（一次性兼容检查，不作为门禁）。
+- 自测 79 项全过（新增 22 项：路径归一、CRLF/BOM、autocrlf 指纹、大小写、中文路径、检测路径展开、平台安装命令）。
+
 ## 0.4.1（2026-10-28）
 
 按 r4 结构评测修复 `project-structure`：

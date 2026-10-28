@@ -18,11 +18,15 @@
 // 测试参数：--reused-from TR-xxx（复用登记，须指纹仍一致）
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
-  TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS,
-  loadWorkspace, writeJson, saveTasks, gitInfo, git, gitRun, commitExists, fingerprint, scanSecrets, taskMap, decisionMap,
-  parseArgs, nowIso, stamp, die,
+  TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, IS_WIN,
+  loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
+  scanSecrets, taskMap, decisionMap, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
 } from './lib.mjs';
+
+const [nodeMajor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 18) die(`需要 Node.js 18 或更高版本（当前 ${process.version}）`);
 
 const args = parseArgs(process.argv.slice(2), ['all', 'write', 'json', 'force', 'push', 'merge']);
 process.stdout.on('error', (e) => { if (e.code === 'EPIPE') process.exit(0); throw e; });
@@ -34,10 +38,16 @@ if (!commands[cmd]) {
   die('用法：node pd.mjs <health|next|prompt|record|test-plan|test-record|status|scan|sync|replan-check|ask-check|skills> [root] [选项]');
 }
 let ws;
-if (cmd === 'scan') { scan(); process.exit(process.exitCode ?? 0); }
-if (cmd === 'skills') { skills(); process.exit(process.exitCode ?? 0); }
-try { ws = loadWorkspace(root); } catch (e) { die(e.message); }
-await commands[cmd]();
+// scan / skills 不需要 config；不调用 process.exit，避免 Windows 控制台异步输出被截断
+if (cmd === 'scan' || cmd === 'skills') commands[cmd]();
+else {
+  try { ws = loadWorkspace(root); } catch (e) { die(e.message); }
+  await commands[cmd]();
+}
+/** 工作区内的存储路径 → 绝对路径（存储值可能来自 Windows，含反斜杠） */
+function wsPath(rel) { return path.join(ws.root, toPosix(rel)); }
+/** 显示用相对路径（POSIX 分隔） */
+function relp(f) { return toPosix(path.relative(ws.root, f)); }
 
 // ---------------------------------------------------------------- health
 function health() {
@@ -48,18 +58,19 @@ function health() {
   const cfg = ws.config;
   const md = ws.tasks._format === 'markdown-table';
   const g = gitInfo(ws.root);
+  if (!g.isRepo && !gitAvailable()) W('找不到 git 命令（Windows 请安装 Git for Windows 并加入 PATH），提交/指纹/推送检查已跳过');
 
   // 1. 权威路径存在（run_logs / prompts / evidence 按需创建，不提醒）
   for (const [k, v] of Object.entries(cfg.paths || {})) {
     if (typeof v !== 'string' || ['run_logs', 'prompts', 'evidence'].includes(k)) continue;
-    if (!fs.existsSync(path.join(ws.root, v))) (['task_index', 'decision_index'].includes(k) ? E : W)(`路径映射 ${k} → ${v} 不存在`);
+    if (!fs.existsSync(wsPath(v))) (['task_index', 'decision_index'].includes(k) ? E : W)(`路径映射 ${k} → ${v} 不存在`);
   }
   // 1b. 防泄露：Git 跟踪了 .env 实值或数据库导出 → 错误；.gitignore 缺少对应规则 → 提醒
   if (g.isRepo) {
     const tracked = (git(ws.root, ['ls-files']) ?? '').split('\n').filter(Boolean);
     for (const f of tracked) { const b = path.basename(f); if (isLeakFile(b)) E(`Git 跟踪了不应提交的文件：${f}（.env 实值/数据库导出，移出 Git 并加入 .gitignore）`); }
     const gi = path.join(ws.root, '.gitignore');
-    const txt = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
+    const txt = fs.existsSync(gi) ? readText(gi) : '';
     const miss = ['.env', '*.dump', '*_dump.sql'].filter((x) => !txt.split(/\r?\n/).some((l) => l.trim() === x || (x === '.env' && /^\.env\*?$/.test(l.trim()))));
     if (miss.length) W(`.gitignore 缺少防泄露规则：${miss.join(' ')}（另建议 .env* !.env.example dump*.sql *.sql.gz）`);
   }
@@ -101,7 +112,9 @@ function health() {
       if (!t.requirements?.length && !t.decisions?.length && !t.source) W(`${tag} 没有需求/决策来源（E1 缺失）`);
       if (role === 'executor' && t.detail === 'REFINE_BEFORE_EXECUTION' && !t.objective) W(`${tag} 待细化卡没有 objective，便宜模型容易自行发挥`);
     }
-    if (t.card && !fs.existsSync(path.join(ws.root, t.card))) E(`${tag} 任务卡文件不存在：${t.card}`);
+    if (t.card && !fs.existsSync(wsPath(t.card))) E(`${tag} 任务卡文件不存在：${t.card}`);
+    else if (t.card && !existsExactCase(ws.root, t.card)) W(`${tag} 任务卡路径大小写与磁盘不一致：${t.card}（Windows/macOS 能打开，但 Git 与 Linux 区分大小写）`);
+    if (t.card && /\\/.test(t.card)) W(`${tag} 任务卡路径含反斜杠：${t.card}（存储路径请用 /）`);
     for (const d of t.depends_on || []) {
       if (d === t.id) E(`${tag} 依赖自身`);
       else if (!tm.has(d)) (md ? W : E)(`${tag} 依赖不存在的任务 ${d}`);
@@ -149,7 +162,7 @@ function health() {
     if (seen.has(d.id)) E(`决策 ID 重复：${d.id}`);
     seen.add(d.id);
     if (!DECISION_STATUS.includes(d.status)) E(`${tag} 非法决策状态 ${d.status}`);
-    if (d.file && !fs.existsSync(path.join(ws.root, d.file))) E(`${tag} 决策文件不存在：${d.file}`);
+    if (d.file && !fs.existsSync(wsPath(d.file))) E(`${tag} 决策文件不存在：${d.file}`);
     if (d.status === 'SUPERSEDED' && !d.superseded_by) E(`${tag} 已替代但未写 superseded_by`);
     if (d.superseded_by && !dm.has(d.superseded_by)) E(`${tag} 替代决策 ${d.superseded_by} 不存在`);
     if (d.status === 'DECIDED' && !d.decided_by) W(`${tag} DECIDED 但没写 decided_by（谁裁决的）`);
@@ -161,15 +174,16 @@ function health() {
     if (!e.commit) E(`[台账 ${e.id}] 缺少 commit 基线`);
     if (!e.fingerprint) W(`[台账 ${e.id}] 缺少指纹，无法判断能否复用`);
     if (e.reused_from && !ledger.some((x) => x.id === e.reused_from)) E(`[台账 ${e.id}] reused_from 指向不存在的条目 ${e.reused_from}`);
-    if (e.evidence && !fs.existsSync(path.join(ws.root, e.evidence))) W(`[台账 ${e.id}] 证据文件不存在：${e.evidence}`);
+    if (e.evidence && !fs.existsSync(wsPath(e.evidence))) W(`[台账 ${e.id}] 证据文件不存在：${e.evidence}`);
+    if ((e.covers_paths || []).some((x) => /\\/.test(x))) W(`[台账 ${e.id}] covers_paths 含反斜杠（旧版 Windows 写入），指纹已按 / 归一计算`);
   }
   // 6. 秘密扫描（本工作流的机器文件、任务卡、执行日志）
   const files = [ws.cfgFile, ws.taskIndexFile, ws.decisionIndexFile, ws.testLedgerFile]
-    .concat(tasks.map((t) => t.card && path.join(ws.root, t.card))).filter((f) => f && fs.existsSync(f) && fs.statSync(f).isFile());
+    .concat(tasks.map((t) => t.card && wsPath(t.card))).filter((f) => f && fs.existsSync(f) && fs.statSync(f).isFile());
   if (ws.runLogDir && fs.existsSync(ws.runLogDir) && fs.statSync(ws.runLogDir).isDirectory()) for (const f of fs.readdirSync(ws.runLogDir)) files.push(path.join(ws.runLogDir, f));
   for (const f of files) {
-    const hit = scanSecrets(fs.readFileSync(f, 'utf8'));
-    if (hit.length) E(`疑似秘密写入了 ${path.relative(ws.root, f)}（${hit.join(', ')}）`);
+    const hit = scanSecrets(readText(f));
+    if (hit.length) E(`疑似秘密写入了 ${relp(f)}（${hit.join(', ')}）`);
   }
 
   console.log(`工作区：${ws.root}`);
@@ -312,8 +326,8 @@ function writePrompt(t, text) {
   const dir = ws.p('prompts') || path.join(ws.root, '.product-development', 'prompts');
   fs.mkdirSync(dir, { recursive: true });
   const f = path.join(dir, `${t.id}.md`);
-  fs.writeFileSync(f, text, 'utf8');
-  return path.relative(ws.root, f);
+  writeText(f, text);
+  return relp(f);
 }
 
 function next() {
@@ -361,6 +375,7 @@ function record() {
   const g = gitInfo(ws.root);
   const ev = { at: nowIso(), task: t.id, event, actor: args.by || process.env.PD_ACTOR || 'unknown', branch: g.branch, head: g.head, dirty: g.dirty };
   for (const k of ['note', 'evidence', 'status', 'needs', 'escalate', 'options', 'recommend']) if (args[k]) ev[k] = String(args[k]);
+  if (ev.evidence) ev.evidence = toPosix(ev.evidence);
   if (args['no-change-reason']) ev.no_change_reason = String(args['no-change-reason']);
   if (args['remove-commit']) ev.remove_commit = String(args['remove-commit']);
   if (args.commit) {
@@ -410,7 +425,9 @@ function record() {
   t.status = status;
   if (event === 'TEST_RUN' && args.cmd && args.paths && args.result) {
     if (!RESULT.includes(args.result)) die('--result 只能是 PASS/FAIL/UNKNOWN');
-    const covers = String(args.paths).split(',').map((x) => x.trim()).filter(Boolean);
+    const covers = pathList(args.paths);
+    const miss = missingAtRev(ws.root, covers);
+    if (miss.length) console.log(`提醒：这些覆盖路径在 HEAD 中不存在：${miss.join(', ')}（未提交、拼错，或大小写与 Git 记录不一致），指纹记为 missing`);
     const entry = { id: `TR-${stamp()}-${t.id.replace(/[^A-Za-z0-9-]/g, '')}`, at: ev.at, scope: 'task', kind: 'targeted', target: t.id, result: args.result,
       commit: g.head, dirty: g.dirty, covers_paths: covers, fingerprint: fingerprint(ws.root, covers), commands: [String(args.cmd)], tester: ev.actor, by_role: t.role || 'executor' };
     if (ws.testLedgerFile) { ws.ledger.entries = [...(ws.ledger.entries || []), entry]; writeJson(ws.testLedgerFile, ws.ledger); ev.ledger_entry = entry.id; console.log(`定向测试已登记测试台账 ${entry.id}（阶段体检可据此复用）`); }
@@ -422,7 +439,7 @@ function record() {
   const f = path.join(dir, `${t.id}.jsonl`);
   fs.appendFileSync(f, JSON.stringify(ev) + '\n', 'utf8');
   saveTasks(ws, [t.id]);
-  console.log(`已记录 ${ev.event} → ${path.relative(ws.root, f)}；${t.id} 当前状态 ${t.status}`);
+  console.log(`已记录 ${ev.event} → ${relp(f)}；${t.id} 当前状态 ${t.status}`);
   if (event === 'BLOCKED') console.log(`已上报 ${t.escalation.to}${ev.needs ? '，需要：' + ev.needs : ''}。只暂停本卡，就绪卡：${readyTasks('executor').map((x) => x.id).join(', ') || '无'}`);
 }
 
@@ -470,7 +487,7 @@ function testRecord() {
   if (!ws.testLedgerFile) die('config.paths.test_ledger 未配置');
   const g = gitInfo(ws.root);
   if (!g.head) die('不是 git 仓库，无法记录基线');
-  let covers = args.paths ? String(args.paths).split(',').map((s) => s.trim()).filter(Boolean) : [];
+  let covers = args.paths ? pathList(args.paths) : [];
   let reusedFrom;
   if (args['reused-from']) {
     reusedFrom = (ws.ledger.entries || []).find((e) => e.id === args['reused-from']);
@@ -478,14 +495,16 @@ function testRecord() {
     if (reusedFrom.result !== 'PASS') die('只能复用 PASS 结果');
     if (fingerprint(ws.root, reusedFrom.covers_paths || []) !== reusedFrom.fingerprint) die(`拒绝复用：${reusedFrom.id} 的覆盖路径内容已变化，必须重测`);
     if (args.result !== 'PASS') die('复用登记只能是 PASS');
-    if (!covers.length) covers = reusedFrom.covers_paths || [];
+    if (!covers.length) covers = (reusedFrom.covers_paths || []).map(toPosix);
   } else if (!covers.length) die('缺少 --paths（本次测试覆盖的源码/测试/配置路径，逗号分隔）');
+  const missing = missingAtRev(ws.root, covers);
+  if (missing.length) console.log(`提醒：这些覆盖路径在 HEAD 中不存在：${missing.join(', ')}（未提交、拼错，或大小写与 Git 记录不一致），指纹记为 missing`);
   if (!reusedFrom && args.result === 'PASS' && !args.cmd) die('PASS 必须写 --cmd（实际执行的命令）；未执行的测试不能登记 PASS');
   const entry = {
     id: `TR-${stamp()}-${String(args.target).replace(/[^A-Za-z0-9-]/g, '')}`,
     at: nowIso(), scope: args.scope, kind: args.kind, target: String(args.target), result: args.result,
     commit: g.head, dirty: g.dirty, covers_paths: covers, fingerprint: fingerprint(ws.root, covers),
-    commands: args.cmd ? [String(args.cmd)] : [], evidence: args.evidence ? String(args.evidence) : undefined,
+    commands: args.cmd ? [String(args.cmd)] : [], evidence: args.evidence ? toPosix(args.evidence) : undefined,
     covers_tasks: args.tasks ? String(args.tasks).split(',').map((s) => s.trim()) : undefined,
     decisions: args.decisions ? String(args.decisions).split(',').map((s) => s.trim()) : undefined,
     reused_from: reusedFrom?.id, tester: args.by || process.env.PD_ACTOR || 'tester',
@@ -532,11 +551,11 @@ function scan() {
     }
   };
   walk(r, 0);
-  const rel = (f) => path.relative(r, f);
+  const rel = (f) => toPosix(path.relative(r, f));
   const pick = (re) => files.filter((f) => re.test(rel(f)));
   const prefixes = new Map();
   for (const f of files.filter((x) => /\.md$/i.test(x)).slice(0, 4000)) {
-    const txt = fs.readFileSync(f, 'utf8');
+    const txt = readText(f);
     for (const m of txt.matchAll(/\b([A-Z][A-Z0-9]{0,5})-(\d{1,4})(?:-\d{1,4})?\b/g)) {
       const k = m[1];
       if (!prefixes.has(k)) prefixes.set(k, { count: 0, files: new Set() });
@@ -691,13 +710,13 @@ function askCheck() {
   for (const d of ws.decisions.decisions || []) {
     let txt = `${d.id} ${d.title || ''} ${d.summary || ''} ${d.decision || ''} ${d._row || ''}`;
     if (d._row) { /* markdown 台账：只看本行，不读整份文件 */ }
-    else if (d.file) { const f = path.join(ws.root, d.file); if (fs.existsSync(f)) txt += ' ' + fs.readFileSync(f, 'utf8'); }
-    else if (ws.config.paths?.decision_dir) { const f = path.join(ws.root, ws.config.paths.decision_dir, `${d.id}.md`); if (fs.existsSync(f)) txt += ' ' + fs.readFileSync(f, 'utf8'); }
+    else if (d.file) { const f = wsPath(d.file); if (fs.existsSync(f)) txt += ' ' + readText(f); }
+    else if (ws.config.paths?.decision_dir) { const f = path.join(wsPath(ws.config.paths.decision_dir), `${d.id}.md`); if (fs.existsSync(f)) txt += ' ' + readText(f); }
     const s = score(txt); if (s) hits.push({ s, kind: '决策', id: d.id, status: d.status, title: d.title });
   }
-  const cards = ws.config.paths?.task_cards ? path.join(ws.root, ws.config.paths.task_cards) : null;
+  const cards = ws.config.paths?.task_cards ? wsPath(ws.config.paths.task_cards) : null;
   if (cards && fs.existsSync(cards)) for (const f of fs.readdirSync(cards).filter((x) => x.endsWith('.md'))) {
-    const s = score(fs.readFileSync(path.join(cards, f), 'utf8')); if (s) hits.push({ s, kind: '任务卡', id: f.replace(/\.md$/, ''), status: taskMap(ws).get(f.replace(/\.md$/, ''))?.status, title: '' });
+    const s = score(readText(path.join(cards, f))); if (s) hits.push({ s, kind: '任务卡', id: f.replace(/\.md$/, ''), status: taskMap(ws).get(f.replace(/\.md$/, ''))?.status, title: '' });
   }
   const need = words.length <= 1 ? 1 : Math.max(2, Math.ceil(words.length * 0.6));
   const strong = hits.filter((h) => h.s >= need);
@@ -719,17 +738,24 @@ function askCheck() {
 
 // ---------------------------------------------------------------- 外部 Skill 安装检查
 function skills() {
-  const here = path.dirname(new URL(import.meta.url).pathname);
+  // fileURLToPath：Windows 上 URL.pathname 是 /C:/...，不能直接当路径用
+  const here = path.dirname(fileURLToPath(import.meta.url));
   const regFile = path.join(here, '..', 'templates', 'skills-registry.json');
   if (!fs.existsSync(regFile)) die('缺少 templates/skills-registry.json');
-  const reg = JSON.parse(fs.readFileSync(regFile, 'utf8'));
+  const reg = JSON.parse(readText(regFile));
   const list = Array.isArray(reg) ? reg : reg.skills || [];
-  const home = process.env.HOME || process.env.USERPROFILE || '';
   const r = path.resolve(root);
-  const exp = (p) => p.replace(/^~(?=\/|\\|$)/, home).replace(/^\.\//, r + '/');
+  // 检测路径：$(command -v X) / cmd:X → PATH 查找（Windows 按 PATHEXT）；其余展开 ~ %VAR% $VAR 与 * / ** 通配
+  const detect = (p) => {
+    const m = String(p).match(/^\$\(command -v (\S+)\)$|^cmd:(\S+)$/);
+    if (m) return which(m[1] || m[2]);
+    for (const c of detectCandidates(p, r)) { const hit = globFirst(c); if (hit) return hit; }
+    return null;
+  };
   const missing = [];
   for (const s of list) {
-    const found = (s.detect_paths || []).map(exp).find((p) => fs.existsSync(p));
+    let found = null;
+    for (const p of s.detect_paths || []) { found = detect(p); if (found) break; }
     console.log(`${found ? '✓' : '✗'} ${s.id}${found ? '  ' + found : ''}  [${(s.phases || []).join('/')}]`);
     if (!found) missing.push(s);
   }
@@ -737,11 +763,12 @@ function skills() {
   console.log('\n缺失的可选 Skill —— 请当前 IDE/CLI 自行安装（只从下列官方仓库；失败不阻塞主任务，按本 Skill 内置步骤继续并记录）：');
   const seen = new Set();
   for (const s of missing) {
-    const key = JSON.stringify([s.repo, s.claude_code_install, s.generic_install]);
+    const generic = IS_WIN && s.generic_install_windows ? s.generic_install_windows : s.generic_install;
+    const key = JSON.stringify([s.repo, s.claude_code_install, generic]);
     if (seen.has(key)) continue; seen.add(key);
-    const same = missing.filter((m) => JSON.stringify([m.repo, m.claude_code_install, m.generic_install]) === key).map((m) => m.id);
+    const same = missing.filter((m) => JSON.stringify([m.repo, m.claude_code_install, IS_WIN && m.generic_install_windows ? m.generic_install_windows : m.generic_install]) === key).map((m) => m.id);
     console.log(`\n# ${same.join(' / ')}  ${s.repo}`);
     for (const c of s.claude_code_install || []) console.log(`  [Claude Code] ${c}`);
-    for (const c of s.generic_install || []) console.log(`  [其他 CLI]   ${c}`);
+    for (const c of generic || []) console.log(`  [其他 CLI${IS_WIN && s.generic_install_windows ? '·PowerShell' : ''}]   ${c}`);
   }
 }
