@@ -2,6 +2,8 @@
 rem Usage: scripts\install.cmd [claude^|codex^|both] [--force] [--dir PATH]
 rem Shim for cmd.exe users: forwards to install.ps1 (Windows PowerShell 5.1 or pwsh).
 setlocal
+rem capture script dir before SHIFT (shift also moves %0)
+set "PD_HERE=%~dp0"
 set "PD_TARGET=Both"
 set "PD_FORCE="
 set "PD_DIR="
@@ -19,8 +21,8 @@ goto loop
 set "PD_PS=powershell"
 where powershell >nul 2>nul || set "PD_PS=pwsh"
 if defined PD_DIR (
-  %PD_PS% -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -Target %PD_TARGET% %PD_FORCE% -Dir "%PD_DIR%"
+  %PD_PS% -NoProfile -ExecutionPolicy Bypass -File "%PD_HERE%install.ps1" -Target %PD_TARGET% %PD_FORCE% -Dir "%PD_DIR%"
 ) else (
-  %PD_PS% -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -Target %PD_TARGET% %PD_FORCE%
+  %PD_PS% -NoProfile -ExecutionPolicy Bypass -File "%PD_HERE%install.ps1" -Target %PD_TARGET% %PD_FORCE%
 )
 exit /b %ERRORLEVEL%

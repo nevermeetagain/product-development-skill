@@ -9,7 +9,7 @@
 - Git：固定 `core.quotepath=false`（中文路径不再被转义，防泄露守卫能识别中文目录下的导出文件）；`windowsHide`；找不到 git 时 `health` 明确提醒。
 - `pd.mjs skills`：修复 Windows 上 `URL.pathname` 得到 `/C:/…` 导致找不到登记表；`~` 用 `os.homedir()`；支持 `%VAR%`/`$VAR`/`${VAR}`、`*`/`**` 通配、`cmd:<名>` 按 PATH/PATHEXT 查找（替代无法生效的 `$(command -v …)`）、`CLAUDE_CONFIG_DIR`/`CODEX_HOME`；Windows 上输出 `generic_install_windows` 的 PowerShell 命令。
 - 入口：Node < 18 直接报错；`scan`/`skills` 不再 `process.exit`（避免 Windows 控制台输出被截断）。
-- 安装：新增 `install.ps1`（PowerShell 5.1/7，UTF-8 BOM + CRLF，`-Target -Force -Dir`）与 `install.cmd`（cmd 转调）；`install.sh` 增加 `--dir`、支持 `CLAUDE_CONFIG_DIR`，二者都只复制 Skill 文件（此前 `install.sh` 会把 `.git` 一并复制）；`install-user.ps1` 保留为旧入口。
+- 安装：新增 `install.ps1`（PowerShell 5.1/7，UTF-8 BOM + CRLF，`-Target -Force -Dir`）与 `install.cmd`（cmd 转调；在 `shift` 前保存脚本目录——CI 发现 `shift` 会移动 `%0` 导致找不到 install.ps1）；`install.sh` 增加 `--dir`、支持 `CLAUDE_CONFIG_DIR`，二者都只复制 Skill 文件（此前 `install.sh` 会把 `.git` 一并复制）；`install-user.ps1` 保留为旧入口。
 - 新增 `.gitattributes`（md/json/mjs/js/sh/yml 为 LF，ps1/cmd/bat 为 CRLF）。
 - 文档：README、SKILL.md 新增“跨平台”节（PowerShell 与 bash 对照）；`config-reference.md` 新增“Windows 注意事项”；`&&` 写法补 PowerShell 5.1 分条说明；代理配置补 bash；明确 `--cmd` 只登记不执行。
 - 新增 `.github/workflows/self-test.yml`：ubuntu-latest + windows-latest × Node 18/22 跑自测，并在 Windows 上跑 PowerShell 5.1/7 与 cmd 安装器、在 Ubuntu 上跑 bash 安装器（一次性兼容检查，不作为门禁）。
