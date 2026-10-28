@@ -30,7 +30,7 @@
 [ ] pd.mjs record：TEST_RUN → COMMITTED(--commit) → PUSHED → DONE；核验写入成功
 [ ] 证据三层：E1 卡/DEC/契约编号 → E2 提交号+改动文件 → E3 测试命令+结果（不适用写 N/A+理由）
 ```
-选定向测试：卡面 `tests.targeted` 优先；否则改动文件的同名/就近测试 + 直接调用方的测试；新逻辑没有测试就先补测试。
+选定向测试：卡面 `tests.targeted` 优先；否则改动文件的同名/就近测试 + 直接调用方的测试；新逻辑没有测试就先补测试。**修 bug 先写定向复现测试、确认它因预期原因失败，再修根因**；通用编码纪律、测试自检、重构三步见 `engineering-discipline.md`。提交信息写为什么、改了什么、怎么验证。
 
 可选外部 Skill（装了就用，没装照本手册）：superpowers `test-driven-development`（先写失败测试）、`systematic-debugging`（测试失败时）、收尾 `code-simplifier`。
 

@@ -78,6 +78,7 @@
 | planning-with-files 计划文件默认 gitignore、任务完成后被覆盖；Stop gate 拦截停止 | 计划必须持久化在仓库、ID 稳定 | 三文件只作单卡工作草稿；结论回写任务卡/执行日志；不启用 gated 模式 |
 | OpenSpec 按 kebab-case 名称命名变更、归档时移动目录 | 稳定 ID、不搬家 | 变更文件夹名前缀带任务/决策 ID；归档只改状态，不改号 |
 | GSD/GSD Pi 自带 `.gsd/`、STATE.md 等状态文件 | 每类事实唯一权威位置 | 若已在用，BOOTSTRAP 时映射为权威路径；不并存两套 |
+| ub-mode：CRAP<10、重复≥0.8 必须消除、变异幸存者必须杀死；“最后推到主线”；自行回收磁盘 | 不设门禁/硬阈值；团队项目推前需人看；删除需确认 | 度量降为阶段体检的可选信号（`quality_signal`）；推送沿用分支/主线模式配置；清理只提议。未登记为可自动安装的外部 Skill（规则与本 Skill 冲突），其可用做法已改写进 `engineering-discipline.md` |
 | code-review 插件默认 `--comment` 可发 PR 评论 | 对外发布需确认 | 默认只输出到终端/台账；发评论前确认 |
 | frontend-design / ui-ux-pro-max 自带设计判断 | 产品方向归用户 | 视觉方向有多选时记为决策；用户已定的照做 |
 
@@ -91,6 +92,7 @@
 6. **置信度过滤的审查（code-review 插件）**：PHASE_REVIEW 中每个问题打 0–100 置信度，<80 不上报；排除既有问题、lint 能抓的、吹毛求疵的。→ 降低规划者裁决噪音。
 7. **读者测试（doc-coauthoring）**：重要规格/交接文档完成后，用无上下文子代理提 5–10 个读者问题检验可理解性，暴露隐含假设。→ 并入 PLAN 完成前自检（可选）。
 8. **两段式复审：先合规后质量（superpowers subagent-driven）**：阶段体检先查"是否满足任务卡验收标准"，再查代码质量；收尾可用 code-simplifier 只整理本阶段改动。→ 并入 PHASE_REVIEW 顺序。
+9. **先跑通再做对 + 确定性度量（ub-mode）**：修 bug 先复现、测试空实现检验、重构三步、先减后加；crapper/dryer/mutator 的 `--changed` 结果作阶段体检信号。→ 并入 `engineering-discipline.md`。
 
 ## 5. 内置等价做法（未安装时）
 

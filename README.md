@@ -1,6 +1,6 @@
 # product-development：统一 AI 产品开发 Skill
 
-版本 0.4.3 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
+版本 0.5.0 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
 核心：**有据可依，行为留痕**。
 
 ## 适合谁
@@ -10,7 +10,7 @@
 ```
 product-development/
 ├── SKILL.md                 统一入口（角色、模式、底线、各模式流程）
-├── references/              按需读取的细则（角色与裁决、证据与就绪门、权威路径、任务卡契约、测试复用、Git、自动化、跨工具）
+├── references/              按需读取的细则（角色与裁决、证据与就绪门、权威路径、任务卡契约、测试复用、Git、编码纪律、自动化、跨工具）
 ├── templates/               config / 任务索引 / 决策登记册 / 测试台账 / 任务卡 / 阶段计划 / 主计划 / AGENTS 片段
 ├── scripts/pd.mjs           辅助命令（零依赖，Node 18+）
 ├── scripts/self-test.mjs    自测
@@ -99,3 +99,6 @@ Skill 是规范，不是后台服务：自动连续调度多个 CLI 需要另写
 
 ## 来源
 0.1.0 由 ChatGPT 起草；0.2.0/0.3.0 由 Hark 结合 Claude 评审、用户补充要求和真实项目执行教训优化并测试。变更见 CHANGELOG.md。
+
+## 致谢
+0.5.0 的编码纪律（先跑通再做对、修 bug 先复现、测试空实现检验、重构三步）与可选质量信号借鉴 Robert C. Martin 的 [unclebob/ub-mode](https://github.com/unclebob/ub-mode)（其本身源自 @poteto 的 poteto-mode / pstack）。ub-mode 仓库未附许可证，本包只借鉴思想、按本 Skill 规则改写，未复制原文；硬阈值、推主线、自行清理磁盘等做法未采纳（理由见 `references/skill-ecosystem.md` §3）。可选度量工具 [crapper](https://github.com/unclebob/crapper)、[dryer](https://github.com/unclebob/dryer)、[mutator](https://github.com/unclebob/mutator) 为 0BSD 许可，需自行安装，不随本包分发。

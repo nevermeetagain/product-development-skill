@@ -3,7 +3,7 @@ name: product-development
 description: 统一的 AI 产品开发工作流：产品讨论、决策固化、一次性全量规划、执行前细化、多助手执行、专职测试与测试复用、规划更新与裁决、Git 交接。用于“和我讨论/记录决定/规划全部剩余任务/执行某张任务卡/验收或体检/重新规划/汇报进度”等请求。核心：有据可依，行为留痕。
 ---
 
-# Product Development：统一产品开发工作流（v0.4.3）
+# Product Development：统一产品开发工作流（v0.5.0）
 
 一个入口，按意图和项目状态选择**最小且足够**的流程。不要每次把所有阶段走一遍。
 本 Skill 是工作规范；文件、终端、Git、网络权限取决于当前工具。随包脚本 `scripts/pd.mjs` 做确定性检查（体检、选下一任务、生成提示词、留痕、测试复用判断）。
@@ -51,9 +51,11 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 7. 可并行 = 无共享可变状态 + 契约已冻结 + 文件所有权不重叠 + 迁移号不冲突；否则串行。所有权重叠是规划缺陷。
 8. **分析深度随风险升级**：架构、契约、安全、不可逆、成本类决策才启用 5W1H + 苏格拉底追问 + 双向钢人论证；小事不走重流程。
 9. **不凑方案、不编数字**：至少两个真实候选，或“唯一可行方案 + 其他为何被否”；缺指标标缺失；没有基线不排优化卡；不写“100%/一定成功”。
-10. **同一张卡失败两次就停手**：改写、拆分、上报或标 BLOCKED，不换个说法第三次硬试。
+10. **同一张卡失败两次就停手**：改写、拆分、上报或标 BLOCKED，不换个说法第三次硬试；上报时写出两次修复共同依赖的前提。
 11. **开工前自评、一次问完**：规划者和执行助手在动手前对 需求清晰度 / 决策覆盖 / 契约完整度 / 依赖状态 / 测试路径 打高中低置信度，把遗漏、疑问、缺失、异常一次列全；拿不准的必须在**编码前**提出等待裁决，不在写到一半时冒出来。
 12. **讨论过的不再问**：任何人提问前先跑 `pd.mjs ask-check . "关键词"`；命中 DECIDED 决策（退出码 5）就照做，只有能证明与新证据矛盾时才交规划者 REPLAN。规划者在讨论中说“记录在案”时，必须当场写入决策登记册并回报编号，否则视为没记录。
+
+13. **先跑通，再做对**：最小改动让定向测试通过，再在允许路径内整理；修 bug 先写定向复现测试并看它失败，再修根因（遮住崩溃的守卫不算修）。编码纪律见 `references/engineering-discipline.md`。
 
 细则：`references/planner-protocol.md`（规划协议与深度推理）、`references/solution-review.md`（多方案评审与打分）、`references/doc-system.md`（文档体系分级）。
 
@@ -130,6 +132,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - **测试助手**：阶段结束做阶段体检（只覆盖本阶段改到的模块；前端含 tsc 和 build），共享契约变化时做集成验证，开发全部完成或发版前做一次全量回归。
 - **复用规则**：每次测试登记到测试台账（命令、覆盖路径、基线提交、内容指纹、结果、证据）。下次测试前运行 `pd.mjs test-plan`：覆盖路径内容和关联决策都没变的 PASS 结果**原则上不重测**；指纹变化、从未测过、上次失败的才测。
 - 不得用 grep 源码冒充行为测试；未执行的测试不得写成通过。
+- **可选质量信号**（CRAP / 重复 / 变异测试，装了工具才跑，只看本阶段改动）：阶段体检时登记为 `kind: quality_signal`，交规划者判断是否排卡；不是门禁、无硬阈值，工具缺失不阻塞。见 `references/engineering-discipline.md` §6。
 
 详见 `references/testing-and-reuse.md`。
 
@@ -153,7 +156,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 6. 每个阶段末尾排一张 `role: tester` 的阶段体检卡；全部完成后排最终回归卡。
 7. `pd.mjs health` 通过后才报告规划完成；记录 `plan_version` 和基线提交。不改业务代码，不自动开工。
 
-**EXECUTE**（执行助手）：读卡及其引用的决策/契约 → `git fetch` 核对分支/HEAD/前置任务真实状态 → **开工前自评**（准则 11、12）→ 就绪门 → 按任务类型读 `references/execution-playbooks.md`（后端/API、业务逻辑、数据与迁移、交互、前端、集成与异步、性能）→ 简短执行计划 → 实现（不越界、不降标准）→ 定向测试 → 本卡单独提交 → **推送并核对同步**（`pd.mjs sync . --task <ID> --push`：远程确实包含本提交才记 PUSHED，失败记 PUSH_FAILED 并停下）→ `record DONE`，留痕改动再提交并再 sync，保证双端一致 → `pd.mjs next` 输出下一张就绪卡的提示词 → 停止，不自动开下一张（除非用户要求连续执行）。推送和同步是完成的必要步骤，不是可选项。
+**EXECUTE**（执行助手）：读卡及其引用的决策/契约 → `git fetch` 核对分支/HEAD/前置任务真实状态 → **开工前自评**（准则 11、12）→ 就绪门 → 按任务类型读 `references/execution-playbooks.md`（后端/API、业务逻辑、数据与迁移、交互、前端、集成与异步、性能），通用编码纪律与修 bug 顺序读 `references/engineering-discipline.md` → 简短执行计划 → 实现（不越界、不降标准）→ 定向测试 → 本卡单独提交 → **推送并核对同步**（`pd.mjs sync . --task <ID> --push`：远程确实包含本提交才记 PUSHED，失败记 PUSH_FAILED 并停下）→ `record DONE`，留痕改动再提交并再 sync，保证双端一致 → `pd.mjs next` 输出下一张就绪卡的提示词 → 停止，不自动开下一张（除非用户要求连续执行）。推送和同步是完成的必要步骤，不是可选项。
 
 **VALIDATE / PHASE_REVIEW / FINAL_REGRESSION**（测试助手）：先 `pd.mjs test-plan` → 只测需要测的 → 逐条验收输出 PASS/FAIL/UNKNOWN → `pd.mjs test-record` 登记 → 通过的卡改 VERIFIED；失败的写缺陷交规划者排修复卡。不顺手改业务代码。阶段体检不替代最终回归。
 
@@ -180,7 +183,8 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 ## 8. Git 与交接
 
 - 每个写入助手用独立 clone 或 worktree；开工前和推送前 `fetch + rebase`；禁止 force push。
-- 一张卡一个提交（信息含任务 ID）；提交成功和推送成功分开记录；无改动不建空提交。
+- 一张卡一个提交（信息含任务 ID，写清为什么、改了什么、怎么验证）；提交成功和推送成功分开记录；无改动不建空提交。
+- 团队/共享仓库用分支模式（`push_main:false`）：执行助手推 `task/<ID>` 即完成，人审与合入走项目自己的流程，异步进行，不停等审批。清理 worktree/分支只列清单待确认，未提交工作永不删除。
 - 认证由本机 Git Credential Manager / gh 一次性配置，代理由本机 `git config http.proxy` 或环境变量一次性配置；之后任何 AI 工具都直接用，**不需要每次把 PAT、代理端口发给 AI**，也不得写入文件、日志、提示词或远程 URL（脚本会扫描拦截）。见 `references/execution-and-git.md`。
 - 下一任务提示词由 `pd.mjs next/prompt` 从权威任务卡生成，是任务卡的“视图”而不是第二份事实；只有任务书不够或前提变化时才请规划者细化。自动化分级见 `references/automation-levels.md`。
 
@@ -199,6 +203,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - `references/automation-levels.md` L1/L2/L3 自动化边界
 - `references/tool-compatibility.md` Claude Code / Codex / DeepSeek 等适配
 - `references/execution-playbooks.md` 执行手册：开工前自评、收尾（测试→提交→推送→同步→留痕）、七类任务的实现规范
+- `references/engineering-discipline.md` 编码纪律（先跑通再做对）、修 bug 先复现、测试写法自检、可选质量信号（crapper/dryer/mutator，借鉴 ub-mode，永不阻塞）
 - `references/config-reference.md` config.json 字段与易猜错的约定
 - `references/planner-protocol.md` 规划协议、契约冻结、切片、深度推理触发条件
 - `references/solution-review.md` 多方案评审、打分、反模式

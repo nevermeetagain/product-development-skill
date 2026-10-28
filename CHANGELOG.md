@@ -1,5 +1,14 @@
 # 变更记录
 
+## 0.5.0（2026-10-28）
+
+吸收 [unclebob/ub-mode](https://github.com/unclebob/ub-mode) 的可用做法（逐条分析：采纳 / 改写 / 不采纳），全部按用户规则改写——只跑定向测试、不设门禁、无硬阈值、不逐卡停等复核：
+- 新增 `references/engineering-discipline.md`（约 6KB）：先跑通→再做对→收尾；十条编码纪律（一个决定一处、最小编辑、先减后加、数据形状先行、边界一次解析、不压制编译器、幂等、单写者、不硬接旧设计、先手做一个再造工具）；**修 bug 先写定向复现测试并看它失败、再修根因**；测试“空实现检验”与重构三步；两次失败上报写出共同前提；可选质量信号 crapper（CRAP）/ dryer（重复）/ mutator（变异），`--changed` 限定范围，台账登记 `kind: quality_signal`，不阻塞、不能当阶段体检 PASS 复用、工具缺失记 UNKNOWN；收尾报告三件事；清理只提议、未提交工作永不删。
+- SKILL.md：准则 10 补“写出共同前提”，新增准则 13（先跑通再做对、修 bug 先复现）；§6 增可选质量信号；EXECUTE 指向新手册；§8 提交信息写为什么/改了什么/怎么验证，团队/共享仓库用分支模式、人审异步进行不停等（回应“自动推送缺人审”的担忧）；参考列表补新文件。
+- `execution-playbooks.md`、`testing-and-reuse.md`、`execution-and-git.md`、`skill-ecosystem.md`（冲突表加 ub-mode 行、借鉴第 9 条）、`templates/AGENTS.snippet.md` 各补 1–3 行。
+- 不采纳：硬阈值门禁（CRAP<10、相似度≥0.8 必须消除、幸存者必须杀死）、“最后推到主线”、自行回收磁盘、逐动作日志、uml-viewer（Clojure/Java 21 + `--yolo` 伴随代理）；ub-mode 与三工具不登记进 `skills-registry.json`（工具是可选 CLI，非 Skill）。
+- README 增致谢（ub-mode 无许可证：只借鉴思想、未复制原文；工具 0BSD）。本版仅改 Markdown，按用户要求未跑测试，脚本未改。
+
 ## 0.4.3（2026-10-28）
 
 新增 `/pds` 快捷命令（跨平台 commands）：
