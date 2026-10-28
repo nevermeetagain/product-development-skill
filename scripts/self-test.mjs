@@ -239,6 +239,27 @@ console.log('14. v04 评测缺陷回归');
   ok('status 显示推送失败', /未同步 T001-02：推送失败/.test(x.stdout), x.stdout);
 }
 
+console.log('16. 防泄露守卫（.env / 数据导出）');
+{
+  const w = fresh();
+  let x = run(w, 'health', '.');
+  ok('样例 .gitignore 齐全无防泄露提醒', x.status === 0 && !/防泄露/.test(x.stdout), x.stdout);
+  fs.mkdirSync(path.join(w, 'db/migrations'), { recursive: true });
+  fs.writeFileSync(path.join(w, 'db/migrations/001_init.sql'), 'create table t(id int);');
+  fs.writeFileSync(path.join(w, '.env.example'), 'DB_URL=');
+  git(w, 'add', '-A'); git(w, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'mig');
+  x = run(w, 'health', '.');
+  ok('迁移 .sql 与 .env.example 不误报', x.status === 0 && !/不应提交/.test(x.stdout), x.stdout + x.stderr);
+  fs.writeFileSync(path.join(w, 'prod_dump.sql'), 'x'); fs.writeFileSync(path.join(w, '.env.local'), 'K=1');
+  git(w, 'add', '-f', 'prod_dump.sql', '.env.local'); git(w, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'leak');
+  x = run(w, 'health', '.');
+  ok('跟踪 *_dump.sql 报错', x.status === 1 && /不应提交的文件：prod_dump\.sql/.test(x.stdout), x.stdout);
+  ok('跟踪 .env.local 报错', /不应提交的文件：\.env\.local/.test(x.stdout), x.stdout);
+  fs.writeFileSync(path.join(w, '.gitignore'), 'node_modules/\n');
+  x = run(w, 'health', '.');
+  ok('.gitignore 缺规则时提醒', /防泄露规则：\.env \*\.dump \*_dump\.sql/.test(x.stdout), x.stdout);
+}
+
 console.log('15. 状态汇报');
 r = run(d, 'status', '.');
 ok('大白话汇总可输出', r.status === 0 && /待裁决决策：DEC-002/.test(r.stdout), r.stdout);

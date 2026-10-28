@@ -21,9 +21,11 @@
 | 需求入口 | 原始需求原话 | 可选 `requirements_inbox` → `docs/requirements/inbox/` | `REQ-INBOX-YYYYMMDD-NNN` |
 | 正式需求 | 做什么、验收条件 | 可选 `requirements` → `docs/requirements/`（标准级可合并为一个 `requirements.md`） | `REQ-F-NNN` 功能 / `REQ-NF-NNN` 非功能 / `REQ-C-NNN` 约束 |
 | 需求基线 | 当前有效需求清单（不含历史） | 同上目录下 `baseline.md`，或 master_plan 的“需求基线”节 | — |
-| 决策 | 为什么这样做、考虑过什么 | `decision_index` + `decision_dir` → `docs/decisions/` | `DEC-NNNN`（ADR 也用此编号，不另起 ADR 系列） |
+| 决策 | 为什么这样做、考虑过什么 | `decision_index` + `decision_dir` → `docs/decisions/` | `DEC-NNNN`（ADR 也用此编号；已有 ADR 系列则用 `decision_sources` 收编，沿用原编号） |
 | 方案 | 某需求具体怎么实现 | 可选 `solutions` → `docs/solutions/` | `SOL-NNN` |
-| 契约 | 接口/错误/身份/数据等共享约定 | 可选 `contracts` → 项目选定的唯一源目录 | 按契约源格式 |
+| 契约 | 接口/错误/身份/数据/事件载荷等共享约定 | 可选 `contracts` → 项目选定的唯一源目录（如 `packages/contracts`） | 按契约源格式 |
+| 项目结构 | 目录、所有权、依赖规则 | 可选 `project_structure` → `docs/architecture/project-structure.md`（已有结构/基线文档则指向它） | `ARCH-STRUCTURE` |
+| 迁移 | 数据库 schema 演进 | 可选 `migrations` → 如 `apps/api/prisma/migrations`（无持久 schema 不设） | 迁移版本号 |
 | 总体计划 | 阶段、切片、快照、DAG、当前进度 | `master_plan` → `docs/plan/master-plan.md` | `PLAN-R<n>` |
 | 任务 | 状态与卡面 | `task_index` + `task_cards` → `docs/plan/task-index.json` + `tasks/` | `<阶段>-<序号>`（如 `T140-30`） |
 | 执行日志 | 每卡发生了什么 | `run_logs` → `docs/plan/runs/<ID>.jsonl` | — |
@@ -83,6 +85,8 @@ REQ-INBOX → REQ-F/NF/C → DEC / SOL → PLAN-R → (WP) → 任务 → TR(台
 | 决策 | 决策登记册 + DEC 文件 | 同左 | 同左 + 重新评估触发条件必填 |
 | 方案 | 不建，写在 DEC | 满足 §6 条件时建 SOL | 同左 |
 | 契约 | 不涉及可省 | 并行开发涉及的契约必需 | 全部适用契约 + 契约测试 |
+| 项目结构 | 可省（树写在 master_plan） | `project-structure.md` | 同左 + project-map |
+| 迁移目录 | 有持久 schema 才有 | 同左 | 同左 |
 | 计划 + 任务 + 日志 | 必需 | 必需 | 必需（+ WP、里程碑） |
 | 测试台账 + 证据 | 必需 | 必需 | 必需 + 发布前验收记录 |
 | 风险/假设/依赖 | 不单列 | master_plan 对应节 | `registers/` 独立登记 |
@@ -123,5 +127,5 @@ REQ-INBOX → REQ-F/NF/C → DEC / SOL → PLAN-R → (WP) → 任务 → TR(台
 [ ] 可验证：VERIFIED 卡在台账有 PASS 与证据路径
 [ ] 历史：被推翻的决策是 SUPERSEDED 而不是被改写
 [ ] 路径：config.json 列出的文件全部存在，无未登记的“第二份”索引
-[ ] 秘密：任何文档、日志、提示词中没有令牌/密码
+[ ] 秘密：任何文档、日志、提示词中没有令牌/密码；Git 未跟踪 .env 实值、*.dump、*_dump.sql 等数据导出
 ```

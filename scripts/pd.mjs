@@ -54,6 +54,15 @@ function health() {
     if (typeof v !== 'string' || ['run_logs', 'prompts', 'evidence'].includes(k)) continue;
     if (!fs.existsSync(path.join(ws.root, v))) (['task_index', 'decision_index'].includes(k) ? E : W)(`路径映射 ${k} → ${v} 不存在`);
   }
+  // 1b. 防泄露：Git 跟踪了 .env 实值或数据库导出 → 错误；.gitignore 缺少对应规则 → 提醒
+  if (g.isRepo) {
+    const tracked = (git(ws.root, ['ls-files']) ?? '').split('\n').filter(Boolean);
+    for (const f of tracked) { const b = path.basename(f); if (isLeakFile(b)) E(`Git 跟踪了不应提交的文件：${f}（.env 实值/数据库导出，移出 Git 并加入 .gitignore）`); }
+    const gi = path.join(ws.root, '.gitignore');
+    const txt = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
+    const miss = ['.env', '*.dump', '*_dump.sql'].filter((x) => !txt.split(/\r?\n/).some((l) => l.trim() === x || (x === '.env' && /^\.env\*?$/.test(l.trim()))));
+    if (miss.length) W(`.gitignore 缺少防泄露规则：${miss.join(' ')}（另建议 .env* !.env.example dump*.sql *.sql.gz）`);
+  }
   if (md) W('任务索引为 markdown 表格（兼容模式）：验收条件、需求来源等字段在任务卡正文，脚本不逐项检查');
   // 2. 任务
   const tasks = ws.tasks.tasks || [];
@@ -170,6 +179,12 @@ function health() {
   for (const e of errors) console.log(`  错误：${e}`);
   console.log(errors.length ? `体检未通过：${errors.length} 个错误，${warns.length} 个提醒` : `体检通过（${warns.length} 个提醒）`);
   process.exitCode = errors.length ? 1 : 0;
+}
+
+/** .env 实值、数据库导出（迁移 .sql 不算） */
+function isLeakFile(b) {
+  if (/^\.env(\..+)?$/i.test(b)) return !/^\.env\.(example|sample|template|defaults)$/i.test(b);
+  return /\.dump$|_dump\.sql$|^dump.*\.sql$|\.sql\.gz$|^backup.*\.sql$/i.test(b);
 }
 
 // ---------------------------------------------------------------- next / prompt

@@ -12,7 +12,10 @@
     "evidence": "docs/evidence",
     "run_logs": "docs/plan/runs",
     "prompts": ".product-development/prompts",
-    "requirements": "docs/requirements"
+    "requirements": "docs/requirements",
+    "project_structure": "docs/architecture/project-structure.md",
+    "contracts": "packages/contracts",
+    "migrations": "apps/api/prisma/migrations"
   },
   "roles": {
     "planner": "Claude（全局规划、规划更新、裁决）",

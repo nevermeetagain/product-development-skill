@@ -51,7 +51,7 @@ snapshot: { date: <绝对日期>, branch: <>, commit: <HEAD>, dirty: <bool>,
 7. **非功能指标**：能量化的转成指标；资料没给数字就标 `【指标缺失】`，交用户定，**不自己编数字**。
 
 ## 2.5 项目结构（STRUCTURE）
-需求复核后、契约冻结前，以架构师身份按 `project-structure.md` 产出 `docs/architecture/project-structure.md`（树 + 所有权 + 依赖规则 + 15 维度决定）。§7 所有权矩阵与卡面允许/禁止路径直接引用它；骨架与守卫配置并入 §4 首刀。
+需求复核后、契约冻结前，以架构师身份按 `project-structure.md` 产出 `docs/architecture/project-structure.md`（树 + 所有权 + 依赖规则 + 16 个核心维度 + 安全、测试 2 个横切项的决定）。§7 所有权矩阵与卡面允许/禁止路径直接引用它；骨架与守卫配置并入 §4 首刀。
 
 ## 3. 契约冻结（并行开发的唯一中间语言）
 按项目实际涉及的面选择，不涉及的写 `N/A + 理由`：

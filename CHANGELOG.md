@@ -1,5 +1,18 @@
 # 变更记录
 
+## 0.4.1（2026-10-28）
+
+按 r4 结构评测修复 `project-structure`：
+- 维度口径统一为 **16 个核心维度 + 安全、测试 2 个横切项**（新增“后台任务与调度”）：lean 用 `src/jobs/`；standard 任务是 API app 的第二入口（`apps/api/src/jobs` + `bootstrap/scheduler`）；仅 full 且需独立伸缩时拆 `apps/worker`。
+- Next.js + Node 栈：server components / route handlers 只经 typed client 调 API，禁止直连 DB/ORM（加入守卫）。
+- Prisma 统一 `apps/api/prisma`（schema + migrations），删去根 `database/`；repositories 在 infrastructure；新增 `UnitOfWork` 事务端口，ORM 类型不出 infrastructure。
+- config 新增可选键 `project_structure`、`contracts`、`migrations`（config-reference、doc-system、config.example）；旧 config 无需修改。
+- ★ = T000-01 后必须存在（真实文件或 `.gitkeep`），非 ★ 首次用到再建；lean 无持久 schema 不建迁移目录；纯前端首刀切片 = UI→状态→存储适配器；模板分 standard/lean 变体。
+- 已有项目：沿用已有 ADR 系列/结构文档（config 指向），探测真实入口，不假设 `apps/api`，补全栈 Next 映射。
+- 后端 i18n（邮件模板、locale 路由）与事件载荷位置（`packages/contracts/<域>/events` 或 `apps/api/src/contracts/events`）。
+- `.gitignore` 增加 `.env*`、`*.dump`、`*_dump.sql`、`dump*.sql`、`*.sql.gz`，加入守卫清单；`pd.mjs health` 对 Git 跟踪的 `.env` 实值/数据导出报错、`.gitignore` 缺规则提醒（迁移 `.sql`、`.env.example` 不误报）。
+- 自测 57 项全过（新增 5 项）。
+
 ## 0.4.0（2026-10-28）
 
 - 新增 `references/execution-playbooks.md`：开工前五项置信度自评、一次问完；固定收尾（定向测试→提交→推送→同步核对→留痕）；后端/API、业务逻辑、数据与迁移、交互、前端、集成与异步、性能七类执行手册。

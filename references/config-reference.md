@@ -10,7 +10,10 @@
 | `paths.decision_index` | 是 | **唯一**决策登记册（JSON 或 Markdown 表格） |
 | `paths.test_ledger` | 是 | 测试台账 JSON（不存在时首次 test-record 自动创建） |
 | `paths.decision_dir` / `task_cards` / `run_logs` / `evidence` / `prompts` / `master_plan` | 否 | 决策正文、任务卡、执行日志、证据、提示词、主计划 |
-| `paths.requirements` / `contracts` / `glossary` / `product` | 否 | 需求、契约、术语、产品文档（见 doc-system.md 分级） |
+| `paths.requirements` / `glossary` / `product` | 否 | 需求、术语、产品文档（见 doc-system.md 分级） |
+| `paths.project_structure` | 否（做过 STRUCTURE 则必填） | 结构文档，默认 `docs/architecture/project-structure.md`；已有项目指向现有结构/基线文档 |
+| `paths.contracts` | 否 | 契约唯一源目录，如 `packages/contracts` 或 OpenAPI 文件所在目录 |
+| `paths.migrations` | 否 | 迁移目录，如 `apps/api/prisma/migrations`；无持久 schema 不填 |
 | `decision_sources` | 否 | 额外 ADR 目录：`[{dir, id_pattern}]` |
 | `dependency_satisfied_by` | 否 | 依赖满足的状态，默认 `["DONE","VERIFIED"]`；严格项目用 `["VERIFIED"]` |
 | `git.main_branch` | 否 | 默认 `main` |
@@ -21,6 +24,7 @@
 | `formats.decision_index` | 否 | `columns`、`default_status`、`open_pattern`（行文本匹配则视为 OPEN），`sources: [{path, id_column, title_column, id_pattern, default_status}]` 可把多个文件（如总台账 + 本版待裁决清单）合并读取 |
 
 ## 约定（评测中发现容易猜错的点）
+- 新增键全部可选，旧 config 不用改；`health` 对不存在的路径只提醒（`task_index`/`decision_index` 除外）。已有 ADR 系列用 `decision_sources` 收编，不另起 DEC。
 - 需求文档放 `paths.requirements`（默认 `docs/requirements/REQ-xxx.md`）；没有就在 BOOTSTRAP 时建。
 - 阶段体检卡 ID：`<阶段>-90`；最终回归卡：`T999-01`（或项目已有约定）。
 - “依赖未完成”不是 BLOCKED，只是未就绪：`next` 不会选它，`prompt` 拒绝生成；BLOCKED 专指需要裁决/外部条件。

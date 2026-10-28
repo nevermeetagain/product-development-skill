@@ -1,6 +1,6 @@
 # product-development：统一 AI 产品开发 Skill
 
-版本 0.4.0 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
+版本 0.4.1 · 一个 Skill 统管：讨论 → 记录决策 → 一次性全量规划（执行前细化）→ 执行 → 专职测试（可复用）→ 规划更新与裁决。
 核心：**有据可依，行为留痕**。
 
 ## 适合谁
@@ -36,7 +36,7 @@ bash scripts/install.sh both                # macOS / Linux
 
 ## 常用命令
 ```bash
-node scripts/pd.mjs health  <项目根>          # 一致性体检（ID/引用/依赖环/状态/证据/秘密）
+node scripts/pd.mjs health  <项目根>          # 一致性体检（ID/引用/依赖环/状态/证据/秘密/.env 与数据导出防泄露）
 node scripts/pd.mjs next    <项目根> [--all --write] [--role tester]   # 选就绪任务并生成提示词
 node scripts/pd.mjs record  <项目根> --task T001-02 --event STARTED
 node scripts/pd.mjs test-plan   <项目根> [--phase T001]               # 哪些测试可复用、哪些要重测
@@ -51,7 +51,7 @@ node scripts/self-test.mjs                     # 自测
 ```
 
 ## 接入已有项目
-先只读 BOOTSTRAP：映射现有文件，**不搬家、不改号**。选定一个任务索引、一个决策登记册、一个测试台账作为权威，历史版本目录保持只读。写 `.product-development/config.json` 后跑 `pd.mjs health`。
+先只读 BOOTSTRAP：映射现有文件，**不搬家、不改号**；已有 ADR 系列和结构文档直接在 config 指向（`decision_sources`、`paths.project_structure`），先探测真实入口，不假设 `apps/api`。选定一个任务索引、一个决策登记册、一个测试台账作为权威，历史版本目录保持只读。写 `.product-development/config.json` 后跑 `pd.mjs health`。
 
 ## 边界
 Skill 是规范，不是后台服务：自动连续调度多个 CLI 需要另写协调器（见 references/automation-levels.md）。脚本只做确定性检查，不替用户做产品决定，不推送 Git。本包不含任何凭据；PAT 和代理端口在本机一次配置（references/execution-and-git.md）。

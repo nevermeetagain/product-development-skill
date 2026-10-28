@@ -3,7 +3,7 @@ name: product-development
 description: 统一的 AI 产品开发工作流：产品讨论、决策固化、一次性全量规划、执行前细化、多助手执行、专职测试与测试复用、规划更新与裁决、Git 交接。用于“和我讨论/记录决定/规划全部剩余任务/执行某张任务卡/验收或体检/重新规划/汇报进度”等请求。核心：有据可依，行为留痕。
 ---
 
-# Product Development：统一产品开发工作流（v0.4）
+# Product Development：统一产品开发工作流（v0.4.1）
 
 一个入口，按意图和项目状态选择**最小且足够**的流程。不要每次把所有阶段走一遍。
 本 Skill 是工作规范；文件、终端、Git、网络权限取决于当前工具。随包脚本 `scripts/pd.mjs` 做确定性检查（体检、选下一任务、生成提示词、留痕、测试复用判断）。
@@ -121,7 +121,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 **PLAN**（规划者）：
 1. 快照：仓库、分支、HEAD、工作区、需求/决策来源、实际代码与测试证据。执行方自述不算完成证明。
 2. 覆盖范围内**全部**已确认剩余工作；每项要么有任务，要么登记为延期/未决。
-2.5 **STRUCTURE（架构师视角设计项目结构）**：需求拆解与关键 DEC 之后、冻结契约和写卡之前，按 `references/project-structure.md` 定档位与栈适配，走 15 维度清单，产出 `docs/architecture/project-structure.md`（树 + 所有权 + 依赖规则，模板 `templates/project-structure.md`）、栈/分层 DEC、config `paths.project_structure`，并把骨架与守卫配置并入首刀 `T000-01`。已有项目只映射现状、出增量迁移卡，绝不批量搬家；小需求快速通道跳过。
+2.5 **STRUCTURE（架构师视角设计项目结构）**：需求拆解与关键 DEC 之后、冻结契约和写卡之前，按 `references/project-structure.md` 定档位与栈适配，走 16 个核心维度 + 安全、测试 2 个横切项（含后台任务：standard 为 api 第二入口，full 才拆 worker），产出 `docs/architecture/project-structure.md`（树 + 所有权 + 依赖规则，模板 `templates/project-structure.md`）、栈/分层 DEC、config `paths.project_structure`（涉及时 `contracts`/`migrations`），并把 ★ 骨架（必须存在，空则 `.gitkeep`）、`.gitignore`（拦 `.env*` 与数据导出）、守卫与第一条垂直切片并入首刀 `T000-01`。已有项目先探测真实入口、沿用已有 ADR/结构文档（config 指向），只映射现状、出增量迁移卡，绝不批量搬家；小需求快速通道跳过。
 3. 每张卡：稳定 ID、阶段、角色、来源（E1）、目标、依赖、允许/禁止路径、**可机器判定的验收**（command/measure/manual+证据）、定向测试、风险、`detail`。
 4. 不确定的卡写清目标、不变量、验收、前提和分支触发条件，步骤标 `REFINE_BEFORE_EXECUTION`。性能/探索类卡必须写**继续条件与停止条件**。
 5. 依赖 DAG、并行组、关键路径、共享文件和迁移串行规则；并行要有收益才并行。
@@ -178,7 +178,7 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - `references/planner-protocol.md` 规划协议、契约冻结、切片、深度推理触发条件
 - `references/solution-review.md` 多方案评审、打分、反模式
 - `references/doc-system.md` 文档体系（最小 / 标准 / 完整三级）
-- `references/project-structure.md` 项目结构设计：分层、依赖方向、15 维度、栈适配、守卫、STRUCTURE 步骤（模板 `templates/project-structure.md`）
+- `references/project-structure.md` 项目结构设计：分层、依赖方向、16+2 维度、栈适配、后台任务、守卫清单、STRUCTURE 步骤（模板 `templates/project-structure.md`）
 - `references/skill-ecosystem.md` 外部 Skill 路由表
 - `templates/` 配置、索引、决策、任务卡、阶段计划、AGENTS 片段
 - `scripts/pd.mjs`（scan / health / next / sync / replan-check / ask-check / skills / prompt / record / test-plan / test-record / status），`scripts/self-test.mjs`
