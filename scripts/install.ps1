@@ -39,12 +39,13 @@ function Install-To([string]$base) {
 }
 
 # 安装 pds.md：内容相同跳过；不同且无 -Force 跳过；-Force 先备份
+# 不用 Get-FileHash：从 pwsh 7 启动 Windows PowerShell 5.1 时继承的 PSModulePath 会让它无法加载（CI 发现）
 function Install-Command([string]$tpl, [string]$dir) {
   if ($NoCommands) { return }
   New-Item -ItemType Directory -Force -Path $dir | Out-Null
   $f = Join-Path $dir 'pds.md'
   if (Test-Path -LiteralPath $f) {
-    if ((Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash) { Write-Host "/pds 已是最新：$f"; return }
+    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($tpl)) -eq [Convert]::ToBase64String([IO.File]::ReadAllBytes($f))) { Write-Host "/pds 已是最新：$f"; return }
     if (-not $Force) { Write-Host "已存在不同的 $f（未覆盖；加 -Force 覆盖，旧文件会备份为 pds.md.bak.<时间>）"; return }
     Rename-Item -LiteralPath $f ('pds.md.bak.' + $stamp)
     Write-Host "已备份旧命令到 $f.bak.$stamp"

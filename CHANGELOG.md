@@ -5,7 +5,7 @@
 新增 `/pds` 快捷命令（跨平台 commands）：
 - `templates/commands/pds.md`（Claude Code / Codex：frontmatter `description`、`argument-hint`，`$ARGUMENTS` 作为意图）与 `templates/commands/cursor/pds.md`（Cursor 无官方参数占位符，读 `/pds` 后的文字）；薄封装，只做“加载并遵循 product-development Skill + 传意图”，列出 规划 / 执行 <任务ID> / 体检 / 状态 / 重规划 / 讨论 / 记录 的含义。
 - 位置均按官方文档核实：Claude Code `~/.claude/commands/`（commands 已并入 skills，Skill 也可 `/product-development`）；Codex `~/.codex/prompts/`（`/prompts:pds`，官方标 deprecated 仍可用；尊重 `CODEX_HOME`）；Cursor `~/.cursor/commands/`（Skill 从 `~/.agents/skills` 自动加载）。
-- `install.sh` / `install.ps1` / `install.cmd` / `install-user.ps1`：新增目标 `cursor`、`all`（`both` 仍为 Claude+Codex），随 Skill 安装 `pds.md`；内容相同跳过，已有不同文件默认不覆盖，`--force`/`-Force` 先备份为 `pds.md.bak.<时间>`；新增 `--no-commands`/`-NoCommands`、`--commands-dir`/`-CommandsDir`（`--dir` 模式需显式给出）。安装器原本无卸载，本版未新增（删 `pds.md` 即可）。
+- `install.sh` / `install.ps1` / `install.cmd` / `install-user.ps1`：新增目标 `cursor`、`all`（`both` 仍为 Claude+Codex），随 Skill 安装 `pds.md`；内容相同跳过，已有不同文件默认不覆盖，`--force`/`-Force` 先备份为 `pds.md.bak.<时间>`；新增 `--no-commands`/`-NoCommands`、`--commands-dir`/`-CommandsDir`（`--dir` 模式需显式给出）；`install.ps1` 比较文件用 `[IO.File]::ReadAllBytes` 而非 `Get-FileHash`（CI 发现：从 pwsh 7 启动 Windows PowerShell 5.1 时继承的 PSModulePath 让 `Get-FileHash` 无法加载）。安装器原本无卸载，本版未新增（删 `pds.md` 即可）。
 - 文档：README、SKILL.md 新增“跨平台 commands”节，`tool-compatibility.md` 补 Cursor 与 `/pds` 表。
 - 自测 88 项（新增 9 项：模板结构、占位符安全、Cursor 版无 `$`、all 安装位置与内容、不覆盖/备份覆盖）；CI 在 Ubuntu（bash）与 Windows（PowerShell 5.1 / 7 / cmd）上断言 `pds.md` 安装到位。
 
