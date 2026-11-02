@@ -145,3 +145,39 @@
 | HyperFrames（HeyGen） | https://github.com/heygen-com/hyperframes | `claude plugin marketplace add heygen-com/hyperframes` → `claude plugin install hyperframes@hyperframes` | 代理/非交互：`npx hyperframes skills update`（只装核心集）；需 Node 22+、FFmpeg | `~/.agents/skills/hyperframes/SKILL.md`；`~/.claude/plugins/**/hyperframes` |
 
 **安装流程（每个 Skill 最多一次）**：检测 → 已装则用 → 未装且路由需要 → （策略要求时）一次性征询 → 执行上表命令 → 再检测 → 成功则本步借用，失败/拒绝则记日志并走 §5 内置做法，主任务继续。
+
+## 附：链接核验（v0.6.0 / PDS-603b，2026-11-02 23:13 CST）
+
+方法：`curl -s -o /dev/null -w %{http_code} -L --max-time 8 <url>`（跟随跳转）。29 个链接全部 200。跳转后 200 不代表内容未变：gsd-2 与 get-shit-done 已标注归档/迁移，以正文标注为准。
+
+```
+200 https://github.com/Fission-AI/OpenSpec
+200 https://github.com/OthmanAdi/planning-with-files
+200 https://github.com/anthropics/claude-plugins-official
+200 https://github.com/anthropics/skills
+200 https://github.com/anthropics/skills.git
+200 https://github.com/glittercowboy/get-shit-done
+200 https://github.com/heygen-com/hyperframes
+200 https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+200 https://github.com/obra/superpowers
+200 https://github.com/obra/superpowers.git
+200 https://github.com/open-gsd/gsd-core
+200 https://github.com/open-gsd/gsd-pi
+200 https://github.com/remotion-dev/skills
+200 https://github.com/vercel-labs/agent-skills
+200 https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/docs/concepts.md
+200 https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh
+200 https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/code-review/README.md
+200 https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/code-simplifier/agents/code-simplifier.md
+200 https://raw.githubusercontent.com/anthropics/skills/main/skills/doc-coauthoring/SKILL.md
+200 https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md
+200 https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
+200 https://raw.githubusercontent.com/anthropics/skills/main/skills/webapp-testing/SKILL.md
+200 https://raw.githubusercontent.com/gsd-build/gsd-2/main/README.md
+200 https://raw.githubusercontent.com/nextlevelbuilder/ui-ux-pro-max-skill/main/README.md
+200 https://raw.githubusercontent.com/obra/superpowers/main/skills/verification-before-completion/SKILL.md
+200 https://raw.githubusercontent.com/open-gsd/gsd-core/main/README.md
+200 https://raw.githubusercontent.com/open-gsd/gsd-pi/main/README.md
+200 https://raw.githubusercontent.com/remotion-dev/skills/main/README.md
+200 https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/web-design-guidelines/SKILL.md
+```
