@@ -420,8 +420,10 @@ function record() {
   const g = gitInfo(ws.root);
   const ev = { at: nowIso(), task: t.id, event, actor: args.by || process.env.PD_ACTOR || 'unknown', branch: g.branch, head: g.head, dirty: g.dirty };
   for (const k of ['note', 'evidence', 'status', 'needs', 'escalate', 'options', 'recommend']) if (args[k]) ev[k] = String(args[k]);
-  for (const k of ['learned', 'next-steps', 'decision', 'reason', 'cost', 'to', 'missing', 'where']) if (args[k]) ev[k.replace('-', '_')] = String(args[k]);
+  for (const k of ['learned', 'next-steps', 'decision', 'reason', 'cost', 'to', 'missing', 'where', 'not-checked', 'risks', 'type', 'trigger']) if (args[k]) ev[k.replace('-', '_')] = String(args[k]);
   for (const k of EVENT_REQUIRED[event] || []) if (!args[k]) die(`${event} 必须带 --${k}（PDS-611：${event === 'RULING' ? '裁决写清 决定/理由/若错的代价' : event === 'CHECKPOINT' ? '断点写清 学到了什么/下一步' : '写清重派给谁'}）`);
+  // PDS-653：推迟必须写触发条件（什么情况下再做），否则就是无限期搁置
+  if (args.type === 'deferral' && !args.trigger) die('type=deferral 必须带 --trigger "<何时重新拿起>"');
   if (event === 'CLAIM' && ev.actor === 'unknown') die('CLAIM 必须带 --by <owner>（或设 PD_ACTOR），否则无法判断谁认领');
   if (ev.evidence) ev.evidence = toPosix(ev.evidence);
   if (args['no-change-reason']) ev.no_change_reason = String(args['no-change-reason']);

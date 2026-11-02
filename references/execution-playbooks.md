@@ -140,3 +140,20 @@
 - 前置任务“DONE”但代码中不存在；迁移号/文件所有权冲突。
 - 推送认证失败（停止并报告，不索要令牌）。
 停手动作：`pd.mjs record --event BLOCKED --note "<缺什么、证据、可选项>"`，保持工作区干净（未完成改动不提交到主线），报告后结束本卡。
+
+## 10. 失败阶梯（v0.6.0 / PDS-653）
+同一张卡反复失败时按阶梯升级，**不得原样重试第三次**：
+
+| 次数 | 动作 | 记录 |
+|---|---|---|
+| 第 1 次失败 | 读真实报错，修正后重跑定向测试 | `TEST_RUN --result FAIL --exit-code <码>` |
+| 第 2 次失败 | 写出两次失败共同依赖的前提，换一个前提再试 | `CHECKPOINT --learned "<前提>" --next-steps "<换的方案>"` |
+| 第 3 次失败 | 停手，交规划者：给 A/B 方案与各自代价，只暂停本卡 | `BLOCKED --needs ... --options "A/B" --recommend A` |
+| 重派后 | 新执行者先读 prompt 里的「前任记录」 | `reassign` 自动携带 |
+
+收尾汇报必须写清**没查什么**和**风险**，推迟必须写**何时再拿起**：
+
+```bash
+pd.mjs record . --task <ID> --event NOTE --not-checked "Windows 未测" --risks "大文件性能未知"
+pd.mjs record . --task <ID> --event NOTE --type deferral --trigger "用户提供 SMTP 后" --note "邮件发送推迟"
+```
