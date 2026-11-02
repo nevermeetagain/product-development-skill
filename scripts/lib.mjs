@@ -385,6 +385,33 @@ export function scanSecrets(text) {
   return SECRET_PATTERNS.filter((re) => re.test(text)).map((re) => re.source);
 }
 
+/** PDS-621：卡面 files{create,modify,test,read}（POSIX，去重）；没有 files 时返回 null */
+export function cardFiles(t) {
+  if (!t.files || typeof t.files !== 'object') return null;
+  const g = (k) => [...new Set((t.files[k] || []).map(toPosix).filter(Boolean))];
+  return { create: g('create'), modify: g('modify'), test: g('test'), read: g('read') };
+}
+/** 允许修改的路径：有 files 时 = create ∪ modify ∪ test；否则沿用旧字段 allowed_paths */
+export function allowedOf(t) {
+  const f = cardFiles(t);
+  return f ? [...new Set([...f.create, ...f.modify, ...f.test])] : (t.allowed_paths || []).map(toPosix);
+}
+/** 路径匹配：完全相同；或模式以 / 或 /** 结尾时按目录前缀；或模式含 * 时按通配 */
+export function pathMatch(pattern, p) {
+  const a = toPosix(pattern); const b = toPosix(p);
+  if (a === b) return true;
+  const dir = a.replace(/\/\*\*$/, '/');
+  if (dir.endsWith('/') && b.startsWith(dir)) return true;
+  if (/[*?]/.test(a)) return new RegExp('^' + a.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*').replace(/\?/g, '.') + '$').test(b);
+  return false;
+}
+/** 两组路径是否有重叠（任一方向匹配） */
+export function pathsOverlap(xs, ys) {
+  const hit = [];
+  for (const x of xs) for (const y of ys) if (pathMatch(x, y) || pathMatch(y, x)) hit.push(x === y ? x : `${x} ~ ${y}`);
+  return [...new Set(hit)];
+}
+
 export function taskMap(ws) { return new Map((ws.tasks.tasks || []).map((t) => [t.id, t])); }
 export function decisionMap(ws) { return new Map((ws.decisions.decisions || []).map((d) => [d.id, d])); }
 

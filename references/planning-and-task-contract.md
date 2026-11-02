@@ -2,7 +2,7 @@
 
 ## 任务索引条目（task-index.json）
 必填：id、title、phase、role（planner/executor/tester）、status、detail（READY/REFINE_BEFORE_EXECUTION）、depends_on、acceptance。
-建议：requirements、decisions、source、objective、areas、priority、allowed_paths、forbidden_paths、tests.targeted、card、risk、legacy_ids。
+建议：requirements、decisions、source、objective、areas、priority、files{create,modify,test,read}（v0.6 推荐，允许修改路径由前三者生成；旧字段 allowed_paths 仍兼容）、forbidden_paths、tests.targeted、card、risk、legacy_ids。
 追踪：execution{started_at, actor, commits[], branch, pushed, evidence[], no_change_reason}、blocked_reason、superseded_by。
 
 ## 验收必须可判定

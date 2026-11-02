@@ -2,7 +2,7 @@
   { "id": "T001-01", "title": "<标题>", "phase": "T001", "role": "executor", "status": "TODO", "detail": "READY",
     "areas": ["frontend"], "priority": 1, "requirements": ["REQ-001"], "decisions": [], "depends_on": [],
     "card": "docs/plan/tasks/T001-01.md", "objective": "<可观察的交付目标>",
-    "allowed_paths": [], "forbidden_paths": [],
+    "files": { "create": [], "modify": [], "test": [], "read": [] }, "forbidden_paths": [],
     "acceptance": [ { "id": "A1", "desc": "<行为>", "check": { "type": "command", "cmd": "<测试命令>" } } ],
     "tests": { "targeted": ["<定向测试命令>"] }, "legacy_ids": [], "execution": {} },
   { "id": "T001-90", "title": "T001 阶段体检", "phase": "T001", "role": "tester", "status": "TODO", "detail": "READY",

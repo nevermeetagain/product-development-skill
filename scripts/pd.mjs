@@ -27,7 +27,7 @@ import { summarizePredecessor } from './cmd/reassign.mjs';
 import {
   TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, EVENT_REQUIRED, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
-  scanSecrets, taskMap, decisionMap, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
+  scanSecrets, taskMap, decisionMap, cardFiles, allowedOf, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
 } from './lib.mjs';
 
 const [nodeMajor] = process.versions.node.split('.').map(Number);
@@ -304,7 +304,9 @@ function buildPrompt(t) {
   }
   lines.push('');
   lines.push('## 修改边界');
-  lines.push(`- 允许：${(t.allowed_paths || []).join('，') || '见任务卡'}`);
+  lines.push(`- 允许：${allowedOf(t).join('，') || '见任务卡'}`);
+  const cf = cardFiles(t);
+  if (cf) for (const [k, label] of [['create', '新建'], ['modify', '修改'], ['test', '测试'], ['read', '只读输入']]) if (cf[k].length) lines.push(`  - ${label}：${cf[k].join('，')}`);
   lines.push(`- 禁止：${(t.forbidden_paths || []).join('，') || '任务卡未列出的公共契约、迁移、其他任务的文件'}`);
   if (t.detail === 'REFINE_BEFORE_EXECUTION') {
     lines.push('');
