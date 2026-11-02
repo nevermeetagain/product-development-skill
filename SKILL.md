@@ -114,5 +114,6 @@ description: 统一的 AI 产品开发工作流：产品讨论、决策固化、
 - `references/modes.md`：各模式完整步骤
 - `references/routing.md`：会话启动路由与红旗表
 - `references/roles-and-handoff.md`、`decision-and-readiness.md`、`source-of-truth-and-layout.md`、`planning-and-task-contract.md`、`testing-and-reuse.md`、`execution-and-git.md`、`automation-levels.md`、`tool-compatibility.md`、`execution-playbooks.md`、`engineering-discipline.md`、`config-reference.md`、`planner-protocol.md`、`solution-review.md`、`doc-system.md`、`project-structure.md`、`skill-ecosystem.md`
+- `references/phase-review.md`：阶段复核三步、两种结束态、三分流（v0.6）
 - `docs/v0.6-rule-map.md`：v0.5.1 → v0.6.0 规则去向对照
 - `scripts/pd.mjs`：scan / health / next / sync / replan-check / ask-check / skills / quality / prompt / record / test-plan / test-record / status
