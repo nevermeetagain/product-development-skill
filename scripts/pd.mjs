@@ -23,6 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { quality as runQuality } from './quality.mjs';
 import { detectStalls, stallLines } from './stall.mjs';
+import { summarizePredecessor } from './cmd/reassign.mjs';
 import {
   TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, EVENT_REQUIRED, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
@@ -291,6 +292,15 @@ function buildPrompt(t) {
   for (const d of t.depends_on || []) {
     const x = tm.get(d);
     lines.push(`- ${d} ${x?.title ?? ''}：${x?.status ?? '不存在'}${x?.execution?.commits?.length ? '，提交 ' + x.execution.commits.join(', ') : ''}`);
+  }
+  const pre = summarizePredecessor(ws, t.id);
+  if (pre.reassigns.length) {
+    lines.push('');
+    lines.push('## 前任记录（重派携带，先读再动手）');
+    lines.push(`- 重派：${pre.reassigns.join('；')}`);
+    lines.push(`- 前任失败/阻塞 ${pre.fails} 次${pre.fails >= 2 ? '：不得原样重试，先写出前两次共同依赖的前提' : ''}`);
+    for (const r of pre.rulings) lines.push(`- 已裁决：${r}`);
+    if (pre.nextSteps) lines.push(`- 前任断点的下一步：${pre.nextSteps}`);
   }
   lines.push('');
   lines.push('## 修改边界');
