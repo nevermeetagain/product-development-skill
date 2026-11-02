@@ -27,7 +27,7 @@ import { summarizePredecessor } from './cmd/reassign.mjs';
 import {
   TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, EVENT_REQUIRED, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
-  scanSecrets, taskMap, decisionMap, cardFiles, allowedOf, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
+  scanSecrets, scanSecretsDetailed, taskMap, decisionMap, cardFiles, allowedOf, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
 } from './lib.mjs';
 
 const [nodeMajor] = process.versions.node.split('.').map(Number);
@@ -81,10 +81,22 @@ function health() {
     if (typeof v !== 'string' || ['run_logs', 'prompts', 'evidence'].includes(k)) continue;
     if (!fs.existsSync(wsPath(v))) (['task_index', 'decision_index'].includes(k) ? E : W)(`路径映射 ${k} → ${v} 不存在`);
   }
+  // PDS-651：秘密白名单 config.secret_allowlist = [{ path, fingerprint?, reason }]；无 fingerprint 表示整文件放行；必须写理由
+  const allow = Array.isArray(ws.config.secret_allowlist) ? ws.config.secret_allowlist : [];
+  for (const a of allow) if (!a.path || !a.reason) E(`secret_allowlist 条目缺 path 或 reason：${JSON.stringify(a)}`);
+  const allowPath = (f) => allow.find((a) => a.reason && a.path === toPosix(f) && !a.fingerprint);
+  const allowFp = (f, fp) => allow.some((a) => a.reason && a.path === toPosix(f) && (!a.fingerprint || a.fingerprint === fp));
   // 1b. 防泄露：Git 跟踪了 .env 实值或数据库导出 → 错误；.gitignore 缺少对应规则 → 提醒
   if (g.isRepo) {
     const tracked = (git(ws.root, ['ls-files']) ?? '').split('\n').filter(Boolean);
-    for (const f of tracked) { const b = path.basename(f); if (isLeakFile(b)) E(`Git 跟踪了不应提交的文件：${f}（.env 实值/数据库导出，移出 Git 并加入 .gitignore）`); }
+    for (const f of tracked) {
+      const b = path.basename(f);
+      if (isLeakFile(b)) { if (allowPath(f)) W(`${f} 命中防泄露规则，但在 secret_allowlist 中（${allowPath(f).reason}）`); else E(`Git 跟踪了不应提交的文件：${f}（.env 实值/数据库导出/私钥，移出 Git 并加入 .gitignore；确属误报写 config.secret_allowlist）`); }
+      // PDS-651：助手记忆目录被跟踪时扫描内容
+      if (/(^|\/)\.(workbuddy-ai|claude|cursor|codex)\/memory\//.test(f) && fs.existsSync(path.join(ws.root, f))) {
+        for (const h of scanSecretsDetailed(readText(path.join(ws.root, f)))) if (!allowFp(f, h.fingerprint)) E(`助手记忆文件 ${f} 疑似含秘密（${h.pattern}，指纹 ${h.fingerprint}）；误报请把指纹写入 config.secret_allowlist 并注明理由`);
+      }
+    }
     const gi = path.join(ws.root, '.gitignore');
     const txt = fs.existsSync(gi) ? readText(gi) : '';
     const miss = ['.env', '*.dump', '*_dump.sql'].filter((x) => !txt.split(/\r?\n/).some((l) => l.trim() === x || (x === '.env' && /^\.env\*?$/.test(l.trim()))));
@@ -198,8 +210,8 @@ function health() {
     .concat(tasks.map((t) => t.card && wsPath(t.card))).filter((f) => f && fs.existsSync(f) && fs.statSync(f).isFile());
   if (ws.runLogDir && fs.existsSync(ws.runLogDir) && fs.statSync(ws.runLogDir).isDirectory()) for (const f of fs.readdirSync(ws.runLogDir)) files.push(path.join(ws.runLogDir, f));
   for (const f of files) {
-    const hit = scanSecrets(readText(f));
-    if (hit.length) E(`疑似秘密写入了 ${relp(f)}（${hit.join(', ')}）`);
+    const hit = scanSecretsDetailed(readText(f)).filter((h) => !allowFp(relp(f), h.fingerprint));
+    if (hit.length) E(`疑似秘密写入了 ${relp(f)}（${[...new Set(hit.map((h) => h.pattern))].join(', ')}；指纹 ${hit.map((h) => h.fingerprint).join(', ')}）`);
   }
 
   for (const l of stallLines(detectStalls(ws, readyTasks()))) W(l);
@@ -215,6 +227,8 @@ function health() {
 /** .env 实值、数据库导出（迁移 .sql 不算） */
 function isLeakFile(b) {
   if (/^\.env(\..+)?$/i.test(b)) return !/^\.env\.(example|sample|template|defaults)$/i.test(b);
+  // PDS-651：私钥与证书容器
+  if (/\.(pem|key|p12|pfx|jks|keystore)$/i.test(b) || /^id_(rsa|ed25519|ecdsa|dsa)$/.test(b)) return true;
   return /\.dump$|_dump\.sql$|^dump.*\.sql$|\.sql\.gz$|^backup.*\.sql$/i.test(b);
 }
 

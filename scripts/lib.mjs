@@ -382,6 +382,12 @@ export function missingAtRev(root, paths, rev = 'HEAD') {
   return [...paths].map(toPosix).filter((p) => git(root, ['rev-parse', '--verify', '-q', `${rev}:${p.replace(/\/$/, '')}`]) === null);
 }
 
+/** PDS-651：带指纹的秘密扫描（指纹 = sha1(命中值) 前 12 位，便于白名单而不保存秘密本身） */
+export function scanSecretsDetailed(text) {
+  const out = [];
+  for (const re of SECRET_PATTERNS) { const g = new RegExp(re.source, 'g'); let m; while ((m = g.exec(text))) out.push({ pattern: re.source, fingerprint: crypto.createHash('sha1').update(m[0]).digest('hex').slice(0, 12) }); }
+  return out;
+}
 export function scanSecrets(text) {
   return SECRET_PATTERNS.filter((re) => re.test(text)).map((re) => re.source);
 }
