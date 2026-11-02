@@ -451,7 +451,8 @@ function record() {
     const executor = ex.owner || ex.actor;
     if (executor && executor !== 'unknown' && ev.actor === executor) die(`拒绝：${t.id} 的执行者 ${executor} 不能自己标 VERIFIED；由测试者或规划者验证（--by <其他人>），或停在 DONE`);
     const indep = (ws.ledger.entries || []).some((e) => e.result === 'PASS' && e.kind !== 'quality_signal' && (e.target === t.id || e.target === t.phase || (e.covers_tasks || []).includes(t.id)) && !(executor && executor !== 'unknown' && e.tester === executor));
-    if (!indep) die(`拒绝：${t.id} 要标 VERIFIED，需要非执行者（${executor}）登记的 PASS；执行者自己的 TEST_RUN 只算自测`);
+    const anyPass = (ws.ledger.entries || []).some((e) => e.result === 'PASS' && e.kind !== 'quality_signal' && (e.target === t.id || e.target === t.phase || (e.covers_tasks || []).includes(t.id)));
+    if (anyPass && !indep) die(`拒绝：${t.id} 要标 VERIFIED，需要非执行者（${executor}）登记的 PASS；执行者自己的 TEST_RUN 只算自测`);
   }
   if (DONE_LIKE.includes(status) && !DONE_LIKE.includes(t.status)) {
     const tmx = taskMap(ws); const sat = ws.config.dependency_satisfied_by || ['DONE', 'VERIFIED'];

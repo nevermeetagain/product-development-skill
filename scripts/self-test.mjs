@@ -471,6 +471,6 @@ console.log('Q. 可选质量信号 pd quality（不联网：PD_QUALITY_NO_NPX=1�
   ok('目录不存在也退出码 0', x.status === 0 && /UNKNOWN/.test(x.stdout), x.stdout + x.stderr);
 }
 
-if (!filterArg) await runModules();
+await runModules(); // 无 --filter 跑全部模块；带 legacy 时只跑同时点名的模块
 console.log(`\n结果：${pass} 通过，${fail} 失败`);
 process.exitCode = fail ? 1 : 0;
