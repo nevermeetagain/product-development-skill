@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { quality as runQuality } from './quality.mjs';
+import { detectStalls, stallLines } from './stall.mjs';
 import {
   TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, EVENT_REQUIRED, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
@@ -200,6 +201,7 @@ function health() {
     if (hit.length) E(`疑似秘密写入了 ${relp(f)}（${hit.join(', ')}）`);
   }
 
+  for (const l of stallLines(detectStalls(ws, readyTasks()))) W(l);
   console.log(`工作区：${ws.root}`);
   console.log(`Git：${g.branch ?? '非 git 仓库'} @ ${g.head?.slice(0, 7) ?? '-'}${g.dirty ? '（有未提交改动）' : ''}`);
   console.log(`任务 ${tasks.length} 张，决策 ${(ws.decisions.decisions || []).length} 条，测试台账 ${ledger.length} 条`);
@@ -351,6 +353,9 @@ function next() {
   if (!list.length) {
     const todo = [...taskMap(ws).values()].filter((t) => t.status === 'TODO' && (!role || (t.role || 'executor') === role));
     console.log(todo.length ? `没有就绪任务。${todo.length} 张待办在等前置任务或决策：` : '没有待办任务。');
+    const cat = { 等前置: 0, 等决策: 0, 其他: 0 };
+    for (const t of todo) { const b = blockers(t).join(' '); cat[/前置任务|尚未合入/.test(b) ? '等前置' : /决策/.test(b) ? '等决策' : '其他']++; }
+    if (todo.length) console.log(`  分类：等前置 ${cat.等前置}，等决策 ${cat.等决策}，其他 ${cat.其他}`);
     for (const t of todo.slice(0, 30)) console.log(`  ${t.id}：${blockers(t).join('；')}`);
     process.exitCode = 3;
     return;
@@ -547,6 +552,8 @@ function status() {
   const done = live.filter((t) => DONE_LIKE.includes(t.status)).length;
   const ready = readyTasks();
   const openDec = (ws.decisions.decisions || []).filter((d) => ['OPEN', 'PROPOSED'].includes(d.status));
+  // PDS-612：停滞先报（第一行）
+  for (const l of stallLines(detectStalls(ws, ready))) console.log(l);
   console.log(`规划 ${ws.tasks.plan_version ?? '?'}：共 ${live.length} 张有效任务，已完成 ${done} 张（${live.length ? Math.round(done * 100 / live.length) : 0}%），其中测试确认 ${by.VERIFIED || 0} 张。`);
   console.log(`进行中 ${by.IN_PROGRESS || 0}，阻塞 ${by.BLOCKED || 0}，失败 ${by.FAILED || 0}，已替代 ${by.SUPERSEDED || 0}${by.UNKNOWN ? `，状态无法识别 ${by.UNKNOWN}` : ''}。`);
   console.log(`现在可以开工：${ready.map((t) => `${t.id}(${t.role || 'executor'})`).join(', ') || '无'}`);
@@ -709,6 +716,8 @@ function replanCheck() {
   // 6 无事可做
   const ready = readyTasks();
   const open = tasks.filter((t) => !DONE_LIKE.includes(t.status) && t.status !== 'SUPERSEDED');
+  // PDS-612：有就绪卡却无人动、进行中却无事件（按 owner 聚合，排在最前）
+  for (const l of stallLines(detectStalls(ws, ready)).reverse()) items.unshift({ kind: '停滞', target: '-', why: l, action: '联系该 owner 认领或重派（pd.mjs reassign），不要等' });
   if (open.length && !ready.length && !tasks.some((t) => t.status === 'IN_PROGRESS')) add('流水线停摆', '-', `还有 ${open.length} 张未完成卡，但没有可开工的卡`, '找出卡住的依赖/决策，优先解锁');
   if (!items.length) { console.log('规划检查：没有需要更新或裁决的事项。'); return; }
   console.log(`规划检查：${items.length} 项需要规划者处理（规划者应主动处理，不等用户提醒）`);
