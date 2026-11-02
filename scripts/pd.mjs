@@ -254,6 +254,7 @@ function buildPrompt(t) {
   lines.push(`# 任务启动指令：${t.id} ${t.title}`);
   lines.push('');
   lines.push('使用 product-development Skill（工具不支持 Skill 时，读取仓库根目录 AGENTS.md 中的工作协议）。');
+  lines.push('本提示词已路由，勿再路由：直接按下文执行（见 references/routing.md）。');
   lines.push(`模式：${role === 'tester' ? 'VALIDATE / PHASE_REVIEW（测试助手）' : 'EXECUTE（执行助手）'}`);
   lines.push('');
   lines.push('## 基线');

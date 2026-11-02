@@ -43,8 +43,8 @@
 |---|---|---|---|---|
 | superpowers（obra） | 自动触发的开发方法论：brainstorming→worktree→writing-plans→subagent/executing→TDD→code review→finish | https://github.com/obra/superpowers | Claude Code：`/plugin install superpowers@claude-plugins-official` | DISCUSS–PHASE_REVIEW 全程 |
 | · brainstorming | 先追问意图、分块复述，大项目产出设计文档 | 同上（README） | 随 superpowers | DISCUSS |
-| · writing-plans | 拆成 2–5 分钟小任务，含精确路径、代码、验证步骤 | 同上 | 随 superpowers | PLAN |
-| · executing-plans | 单会话内联执行全部任务，最后整体复审 | 同上 | 随 superpowers | EXECUTE |
+| · writing-plans | 拆成小任务，每卡一个 Files 块（Create/Modify/Test）+ 精确签名与测试断言；**不写代码体**（“A plan longer than the code it describes has written the code instead”，2026-11-02 核实）；自审禁止 TBD/“handle edge cases” | 同上 | 随 superpowers | PLAN |
+| · executing-plans | 连续执行，卡间不停等（“Do not pause to check in … between tasks”）；偏离写裁决（“Rulings, not stalls”）；失败的运行不写完成行；最后对整条分支做一次新鲜复审（2026-11-02 核实） | 同上 | 随 superpowers | EXECUTE |
 | · subagent-driven-development | 每任务派新子代理，两段式复审（合规→质量） | 同上 | 随 superpowers | EXECUTE |
 | · test-driven-development | 强制 RED-GREEN-REFACTOR，删掉先于测试写的代码 | 同上 | 随 superpowers | EXECUTE |
 | · systematic-debugging | 四阶段根因分析（溯源、纵深防御、条件等待） | 同上 | 随 superpowers | EXECUTE |
@@ -52,7 +52,7 @@
 | · verification-before-completion | "无新鲜验证证据不得声称完成"：识别命令→运行→读输出→再下结论 | https://raw.githubusercontent.com/obra/superpowers/main/skills/verification-before-completion/SKILL.md | 随 superpowers | VALIDATE |
 | OpenSpec（Fission-AI） | 轻量规格驱动：specs/ 为真相源，changes/ 内含 proposal/specs delta/design/tasks，归档时合并 | https://github.com/Fission-AI/OpenSpec ；https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/docs/concepts.md | `npm i -g @fission-ai/openspec` 后 `openspec init`；命令 `/opsx:explore\|propose\|apply\|archive` | DISCUSS/RECORD/PLAN/REPLAN |
 | GSD（TÂCHES） | 上下文工程 + 阶段循环 Discuss→Plan→Execute→Verify→Ship；重活放新上下文子代理，STATE.md/CONTEXT.md 跨会话 | https://github.com/glittercowboy/get-shit-done（已归档，跳转）→ https://raw.githubusercontent.com/open-gsd/gsd-core/main/README.md | `npx @opengsd/gsd-core@latest`；`/gsd-new-project`、`/gsd-onboard` | 全阶段 |
-| gsd-2 → GSD Pi | 本地 CLI 编码代理：里程碑/切片/任务、worktree 隔离、`.gsd/` 存需求/决策/验证证据 | https://raw.githubusercontent.com/gsd-build/gsd-2/main/README.md（已迁移）→ https://raw.githubusercontent.com/open-gsd/gsd-pi/main/README.md | `npx @opengsd/gsd-pi@latest`，命令 `gsd` | PLAN/EXECUTE/VALIDATE（独立工具，非 skill） |
+| gsd-2 → GSD Pi（gsd-2 已于 2026-10-04 归档） | 本地 CLI 编码代理：里程碑/切片/任务、worktree 隔离、`.gsd/` 存需求/决策/验证证据 | https://raw.githubusercontent.com/gsd-build/gsd-2/main/README.md（已迁移）→ https://raw.githubusercontent.com/open-gsd/gsd-pi/main/README.md | `npx @opengsd/gsd-pi@latest`，命令 `gsd` | PLAN/EXECUTE/VALIDATE（独立工具，非 skill） |
 | planning-with-files（OthmanAdi） | 磁盘三文件 task_plan.md/findings.md/progress.md + hooks 每轮重注入，抗 /clear 与上下文腐烂 | https://github.com/OthmanAdi/planning-with-files | `npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g`（中文版 `planning-with-files-zh`） | PLAN/EXECUTE |
 | frontend-design（Anthropic） | 有主见的视觉设计：先出 token 方案（色/字/版式/原则），对照"AI 模板味"清单自审再写码 | https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md | `/plugin marketplace add anthropics/skills` → `example-skills` | DISCUSS/EXECUTE（前端） |
 | doc-coauthoring（Anthropic） | 三段式写文档：收集上下文→逐节头脑风暴/起草→用无上下文子代理做"读者测试" | https://raw.githubusercontent.com/anthropics/skills/main/skills/doc-coauthoring/SKILL.md | 同上 | DISCUSS/RECORD（文档） |
@@ -93,6 +93,18 @@
 7. **读者测试（doc-coauthoring）**：重要规格/交接文档完成后，用无上下文子代理提 5–10 个读者问题检验可理解性，暴露隐含假设。→ 并入 PLAN 完成前自检（可选）。
 8. **两段式复审：先合规后质量（superpowers subagent-driven）**：阶段体检先查"是否满足任务卡验收标准"，再查代码质量；收尾可用 code-simplifier 只整理本阶段改动。→ 并入 PHASE_REVIEW 顺序。
 9. **先跑通再做对 + 确定性度量（ub-mode）**：修 bug 先复现、测试空实现检验、重构三步、先减后加；`--changed` 范围的 CRAP/重复/变异作阶段体检信号。→ 并入 `engineering-discipline.md`；0.5.1 起默认用 Node 路径 `pd.mjs quality`（npx 临时拉 ESLint complexity + c8 + jscpd，StrykerJS 按需），因为不是每位用户都有 Python；unclebob 的 Python 工具 crapper/dryer/mutator 仅作可选替代。
+
+## 4.1 v0.6.0 新增借鉴（只借思想，不登记进 skills-registry，2026-11-02 读原文核实）
+
+| 来源 | 借鉴 | 落点 | 不采纳 |
+|---|---|---|---|
+| ponytail（DietrichGebert/ponytail） | 一句信条统领全部规则（“The best code is the code never written”）；汇报以“未做/未查/风险”收尾；妥协登记为带触发条件的债务 | SKILL.md §0、§9；record 字段（PDS-653） | ultra 档“质疑需求”（会重开已决事项） |
+| security-audit-skill（cloudflare） | 只有两种结束态（完成 / incomplete+原因）；独立证伪验证者；confirmed/needs_validation/rejected 三态；JSON schema 派生报告；不含行号的指纹 | PHASE_REVIEW（PDS-633）、findings-check（PDS-632）、密钥白名单（PDS-651） | OS 沙箱、两轮验证、安全双轴严重度 |
+| ECC（affaan-m/ECC） | Pre-Report Gate 与“零发现合法”；委派者负责收回；local/target 验证分栏；dev/release 档位；规则写来源 | PHASE_REVIEW、停滞检测（PDS-612/613）、E3 分栏（PDS-631）、`--profile`（PDS-652） | 300+ 技能目录、后台 observer、80% 覆盖率阈值 |
+| claude-mem（thedotmack） | 先索引后详情、成本可见、语义标题；≥32 KB 文档先大纲 | `pd.mjs index/show/outline`（PDS-643） | 常驻进程、SQLite/Chroma、LLM 自动压缩 |
+| context-mode（mksglu） | 大输出落文件只回摘要和指针；≤2 KB 分级交接快照；先搜后问 | `pd.mjs digest/brief`（PDS-641/642）、ask-check 扩展（PDS-644） | MCP/hook 强依赖、14 天自动清理；ELv2 代码不复制 |
+| pua（tanweai/pua） | 失败阶梯；开工一行诊断；执行者只写候选完成态；“不允许静默挂起” | SKILL.md 准则 15/16；停滞检测；完成三态 | 施压话术、改动前全量回归、四代理拓扑 |
+| using-superpowers（obra） | 回答前先路由；红旗表；派发任务跳过路由 | `references/routing.md`（PDS-602） | — |
 
 ## 5. 内置等价做法（未安装时）
 

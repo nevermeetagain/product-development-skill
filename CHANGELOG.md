@@ -1,5 +1,10 @@
 # 变更记录
 
+
+## 0.6.0（进行中）
+
+- P1 立魂与减法（PDS-601/602/603）：SKILL.md 214→118 行，以信条“只信证据、只做必要、卡住就说”统领准则 1–17；模式细则下沉 `references/modes.md`，跨平台表下沉 `tool-compatibility.md`；新增 `references/routing.md`（会话启动路由 + 规划者/执行者红旗表）；`pd.mjs prompt` 首段标注“已路由，勿再路由”；`skill-ecosystem.md` 更正 writing-plans（不写代码体）、executing-plans（连续执行）、gsd-2 已归档，并新增 v0.6 借鉴表；规则去向见 `docs/v0.6-rule-map.md`。
+- 规划：`docs/v0.6.0/plan.md`（22 卡），派发视图 `docs/v0.6.0/executor-prompts.md`。
 ## 0.5.1（2026-10-28）
 
 可选质量信号改走 Node（不是每位用户都有 Python）：
