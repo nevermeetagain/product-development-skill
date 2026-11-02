@@ -776,6 +776,16 @@ function askCheck() {
   if (cards && fs.existsSync(cards)) for (const f of fs.readdirSync(cards).filter((x) => x.endsWith('.md'))) {
     const s = score(readText(path.join(cards, f))); if (s) hits.push({ s, kind: '任务卡', id: f.replace(/\.md$/, ''), status: taskMap(ws).get(f.replace(/\.md$/, ''))?.status, title: '' });
   }
+  // PDS-644：执行日志里的 RULING（规划者裁决，视同已决定）与 CHECKPOINT（断点经验）也要查
+  const rdir = ws.runLogDir;
+  if (rdir && fs.existsSync(rdir)) for (const f of fs.readdirSync(rdir).filter((x) => x.endsWith('.jsonl'))) {
+    for (const l of readText(path.join(rdir, f)).split(/\r?\n/)) {
+      if (!l.trim()) continue; let e; try { e = JSON.parse(l); } catch { continue; }
+      if (e.event !== 'RULING' && e.event !== 'CHECKPOINT') continue;
+      const txt = e.event === 'RULING' ? `${e.decision} ${e.reason} ${e.cost}` : `${e.learned} ${e.next_steps}`;
+      const s = score(txt); if (s) hits.push({ s, kind: e.event === 'RULING' ? '裁决' : '断点', id: `${e.task}@${e.at}`, status: e.event === 'RULING' ? 'DECIDED' : '', title: e.event === 'RULING' ? e.decision : e.learned });
+    }
+  }
   const need = words.length <= 1 ? 1 : Math.max(2, Math.ceil(words.length * 0.6));
   const strong = hits.filter((h) => h.s >= need);
   hits.sort((a, b) => b.s - a.s);
@@ -790,7 +800,7 @@ function askCheck() {
   for (const h of hits.slice(0, 8)) console.log(`  ${h.kind} ${h.id}${h.status ? ' [' + h.status + ']' : ''} ${h.title || ''}（命中 ${h.s}/${words.length}）`);
   const open = strong.filter((h) => h.kind === '决策' && ['OPEN', 'PROPOSED'].includes(h.status));
   if (open.length) console.log(`注意：${open.map((h) => h.id).join(', ')} 仍未决——这类问题应等裁决，不要自行假设。`);
-  const decided = strong.filter((h) => h.kind === '决策' && h.status === 'DECIDED');
+  const decided = strong.filter((h) => (h.kind === '决策' || h.kind === '裁决') && h.status === 'DECIDED');
   if (decided.length && !open.length) { console.log(`结论：已有 DECIDED 决策 ${decided.map((h) => h.id).join(', ')}，不得再向用户提问，除非能证明它与新证据矛盾（此时交规划者 REPLAN）。`); process.exitCode = 5; }
 }
 
