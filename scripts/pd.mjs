@@ -23,7 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { quality as runQuality } from './quality.mjs';
 import {
-  TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, IS_WIN,
+  TASK_STATUS, DONE_LIKE, DECISION_STATUS, ROLES, DETAIL, RESULT, EVENTS, EVENT_REQUIRED, IS_WIN,
   loadWorkspace, writeJson, writeText, readText, saveTasks, gitInfo, git, gitRun, gitAvailable, commitExists, fingerprint, missingAtRev,
   scanSecrets, taskMap, decisionMap, parseArgs, nowIso, stamp, die, toPosix, pathList, detectCandidates, globFirst, which, existsExactCase,
 } from './lib.mjs';
@@ -390,6 +390,9 @@ function record() {
   const g = gitInfo(ws.root);
   const ev = { at: nowIso(), task: t.id, event, actor: args.by || process.env.PD_ACTOR || 'unknown', branch: g.branch, head: g.head, dirty: g.dirty };
   for (const k of ['note', 'evidence', 'status', 'needs', 'escalate', 'options', 'recommend']) if (args[k]) ev[k] = String(args[k]);
+  for (const k of ['learned', 'next-steps', 'decision', 'reason', 'cost', 'to']) if (args[k]) ev[k.replace('-', '_')] = String(args[k]);
+  for (const k of EVENT_REQUIRED[event] || []) if (!args[k]) die(`${event} 必须带 --${k}（PDS-611：${event === 'RULING' ? '裁决写清 决定/理由/若错的代价' : event === 'CHECKPOINT' ? '断点写清 学到了什么/下一步' : '写清重派给谁'}）`);
+  if (event === 'CLAIM' && ev.actor === 'unknown') die('CLAIM 必须带 --by <owner>（或设 PD_ACTOR），否则无法判断谁认领');
   if (ev.evidence) ev.evidence = toPosix(ev.evidence);
   if (args['no-change-reason']) ev.no_change_reason = String(args['no-change-reason']);
   if (args['remove-commit']) ev.remove_commit = String(args['remove-commit']);
@@ -408,6 +411,8 @@ function record() {
   const ex = t.execution = { ...(t.execution || {}) };
   let status = ev.status || t.status;
   if (event === 'STARTED') { ex.started_at = ev.at; ex.actor = ev.actor; if (!ev.status && t.status === 'TODO') status = 'IN_PROGRESS'; }
+  if (event === 'CLAIM') { ex.owner = ev.actor; ex.claimed_at = ev.at; }
+  if (event === 'STARTED' && !ex.owner && ev.actor !== 'unknown') ex.owner = ev.actor;
   if (ev.remove_commit) ex.commits = (ex.commits || []).filter((c) => !c.startsWith(ev.remove_commit) && c !== 'true');
   if (ev.commit) ex.commits = [...new Set([...(ex.commits || []), ev.commit])];
   if (event === 'PUSHED') {

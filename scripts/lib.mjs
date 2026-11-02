@@ -14,7 +14,11 @@ export const ROLES = ['planner', 'executor', 'tester', 'user'];
 export const DETAIL = ['READY', 'REFINE_BEFORE_EXECUTION'];
 export const RESULT = ['PASS', 'FAIL', 'UNKNOWN'];
 export const EVENTS = ['STARTED', 'PLAN_CONFIRMED', 'BLOCKED', 'UNBLOCKED', 'TEST_RUN', 'COMMITTED', 'PUSHED', 'PUSH_FAILED',
-  'DONE', 'VERIFIED', 'FAILED', 'CORRECTION', 'ESCALATED', 'DECIDED', 'REPLANNED', 'NOTE'];
+  'DONE', 'VERIFIED', 'FAILED', 'CORRECTION', 'ESCALATED', 'DECIDED', 'REPLANNED', 'NOTE',
+  // v0.6（PDS-611）：认领、心跳、断点、裁决、重派
+  'CLAIM', 'HEARTBEAT', 'CHECKPOINT', 'RULING', 'REASSIGN'];
+/** 事件必填字段（PDS-611）：缺一即拒绝写入 */
+export const EVENT_REQUIRED = { CHECKPOINT: ['learned', 'next-steps'], RULING: ['decision', 'reason', 'cost'], REASSIGN: ['to'] };
 
 const SECRET_PATTERNS = [
   /ghp_[A-Za-z0-9]{20,}/, /github_pat_[A-Za-z0-9_]{20,}/, /gho_[A-Za-z0-9]{20,}/,
