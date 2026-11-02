@@ -233,9 +233,8 @@ function isLeakFile(b) {
 }
 
 // ---------------------------------------------------------------- next / prompt
-function blockers(t) {
-  const tm = taskMap(ws);
-  const dm = decisionMap(ws);
+// PDS-654：调用方可传入已建好的 taskMap/decisionMap，避免每张卡重建
+function blockers(t, tm = taskMap(ws), dm = decisionMap(ws)) {
   const doneSet = new Set(ws.config.dependency_satisfied_by || ['DONE', 'VERIFIED']);
   const why = [];
   if (t.status !== 'TODO') why.push(`状态是 ${t.status}，不是 TODO`);
@@ -254,18 +253,18 @@ function blockers(t) {
 }
 
 function readyTasks(role) {
-  const tm = taskMap(ws);
+  const tm = taskMap(ws); const dm = decisionMap(ws);
   const out = [];
   for (const t of tm.values()) {
     if (role && (t.role || 'executor') !== role) continue;
-    if (!blockers(t).length) out.push(t);
+    if (!blockers(t, tm, dm).length) out.push(t);
   }
   // 关键路径优先：被越多任务（传递）依赖越靠前；其次 priority；再按 ID
+  // PDS-654：先建一次反向依赖图，再对每张就绪卡做 BFS（原实现每层都全表扫描）
+  const rev = new Map();
+  for (const t of tm.values()) for (const d of t.depends_on || []) { if (!rev.has(d)) rev.set(d, []); rev.get(d).push(t.id); }
   const downstream = new Map();
-  const count = (id, seen = new Set()) => {
-    for (const t of tm.values()) if ((t.depends_on || []).includes(id) && !seen.has(t.id)) { seen.add(t.id); count(t.id, seen); }
-    return seen.size;
-  };
+  const count = (id) => { const seen = new Set(); const q = [id]; while (q.length) for (const c of rev.get(q.pop()) || []) if (!seen.has(c)) { seen.add(c); q.push(c); } return seen.size; };
   for (const t of out) downstream.set(t.id, count(t.id));
   out.sort((a, b) => (downstream.get(b.id) - downstream.get(a.id)) || ((a.priority ?? 99) - (b.priority ?? 99)) || a.id.localeCompare(b.id));
   return out;
@@ -647,11 +646,16 @@ function scan() {
 }
 
 // ---------------------------------------------------------------- 推送与同步核对
+// 用 var：命令在模块顶部分发时这里尚未执行，let 会触发暂时性死区
+var pushedThisRun = false; var fetchCount = 0;
 function remoteContains(r, sha) {
   const remote = (git(r, ['remote']) || '').split('\n').filter(Boolean)[0];
   if (!remote) return { ok: false, why: '本仓库没有配置远程（git remote 为空）' };
-  git(r, ['fetch', '--quiet', remote]);
-  const refs = (git(r, ['branch', '-r', '--contains', sha]) || '').split('\n').map((s) => s.trim()).filter(Boolean);
+  // PDS-654：刚推送过时，push 已更新远程跟踪分支，先不 fetch；查不到再 fetch 一次兜底
+  const look = () => (git(r, ['branch', '-r', '--contains', sha]) || '').split('\n').map((s) => s.trim()).filter(Boolean);
+  let refs = [];
+  if (pushedThisRun) refs = look();
+  if (!refs.length) { git(r, ['fetch', '--quiet', remote]); fetchCount = (fetchCount || 0) + 1; refs = look(); }
   if (!refs.length) return { ok: false, why: `远程 ${remote} 不包含提交 ${sha?.slice(0, 7)}` };
   return { ok: true, ref: refs[0] };
 }
@@ -672,7 +676,7 @@ function sync() {
   const branch = g.branch;
   if (branch === (cfg.main_branch || 'main') && cfg.push_main === false && !args.merge) return fail(`当前在 ${branch}，而 config.git.push_main=false；请在任务分支提交后推送，或由用户把 push_main 改为 true`);
   if (args.push) {
-    git(r, ['fetch', '--quiet', remote]);
+    git(r, ['fetch', '--quiet', remote]); fetchCount = (fetchCount || 0) + 1;
     const up = git(r, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
     if (up) {
       const behind = Number(git(r, ['rev-list', '--count', `HEAD..${up}`]) || 0);
@@ -684,6 +688,7 @@ function sync() {
       }
     }
     const pr = gitRun(r, ['push', remote, `HEAD:refs/heads/${branch}`]);
+    if (pr.ok) pushedThisRun = true;
     if (!pr.ok) return fail(`git push ${remote} ${branch} 失败：${pr.err || '无输出'}（常见原因：认证/代理/权限/保护分支）。禁止 force push`);
   }
   if (args.merge) {
@@ -695,6 +700,7 @@ function sync() {
     m = gitRun(r, ['merge', '--ff-only', '-q', cur]);
     if (!m.ok) { gitRun(r, ['checkout', '-q', cur]); return fail(`无法快进合并 ${cur} → ${main}：${m.err}（先把 ${main} 合并进任务分支，有冲突交规划者；不 rebase）`); }
     m = gitRun(r, ['push', remote, `${main}:refs/heads/${main}`]);
+    if (m.ok) pushedThisRun = true;
     if (!m.ok) { gitRun(r, ['checkout', '-q', cur]); return fail(`推送 ${main} 失败：${m.err}`); }
     console.log(`已快进合并 ${cur} → ${main} 并推送`);
   }
@@ -703,6 +709,7 @@ function sync() {
   if (!v.ok) return fail(v.why);
   const remoteHead = git(r, ['rev-parse', `${remote}/${branch}`]);
   const same = remoteHead === head;
+  if (process.env.PD_DEBUG) console.log(`PD_DEBUG fetch 次数 ${fetchCount}`);
   console.log(`同步核对：本地 ${branch}@${head.slice(0, 7)}，远程 ${remote}/${branch}@${remoteHead?.slice(0, 7) ?? '-'} → ${same ? '一致' : '远程已包含本地提交，但分支指针不同'}`);
   if (t) { args.event = 'PUSHED'; args.note = `${remote}/${branch}@${head.slice(0, 7)}`; record(); }
 }
