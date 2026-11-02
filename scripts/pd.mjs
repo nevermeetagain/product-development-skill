@@ -646,8 +646,10 @@ function sync() {
     if (up) {
       const behind = Number(git(r, ['rev-list', '--count', `HEAD..${up}`]) || 0);
       if (behind > 0) {
-        const rb = git(r, ['rebase', up]);
-        if (rb === null || gitInfo(r).dirty && /rebase/.test(git(r, ['status']) || '')) { git(r, ['rebase', '--abort']); return fail(`远程领先 ${behind} 个提交且 rebase 有冲突，已中止 rebase；交规划者裁决`); }
+        // PDS-614：不 rebase（不改写已记录的提交号）。默认 merge --no-edit；config.git.on_behind='fail' 时直接失败
+        if ((cfg.on_behind || 'merge') === 'fail') return fail(`远程领先 ${behind} 个提交（config.git.on_behind=fail）：请先合并远程再推送`);
+        const mg = gitRun(r, ['-c', 'user.name=' + (git(r, ['config', 'user.name']) || 'pd'), '-c', 'user.email=' + (git(r, ['config', 'user.email']) || 'pd@localhost'), 'merge', '--no-edit', '-q', up]);
+        if (!mg.ok) { gitRun(r, ['merge', '--abort']); return fail(`远程领先 ${behind} 个提交且合并有冲突，已中止合并（未 rebase、未改写历史）：${mg.err}；交规划者裁决`); }
       }
     }
     const pr = gitRun(r, ['push', remote, `HEAD:refs/heads/${branch}`]);
@@ -660,7 +662,7 @@ function sync() {
     let m = gitRun(r, ['checkout', '-q', main]); if (!m.ok) return fail(`切换到 ${main} 失败：${m.err}`);
     gitRun(r, ['pull', '--ff-only', '-q', remote, main]);
     m = gitRun(r, ['merge', '--ff-only', '-q', cur]);
-    if (!m.ok) { gitRun(r, ['checkout', '-q', cur]); return fail(`无法快进合并 ${cur} → ${main}：${m.err}（先 rebase ${main}，有冲突交规划者）`); }
+    if (!m.ok) { gitRun(r, ['checkout', '-q', cur]); return fail(`无法快进合并 ${cur} → ${main}：${m.err}（先把 ${main} 合并进任务分支，有冲突交规划者；不 rebase）`); }
     m = gitRun(r, ['push', remote, `${main}:refs/heads/${main}`]);
     if (!m.ok) { gitRun(r, ['checkout', '-q', cur]); return fail(`推送 ${main} 失败：${m.err}`); }
     console.log(`已快进合并 ${cur} → ${main} 并推送`);
