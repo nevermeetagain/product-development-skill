@@ -50,6 +50,14 @@ node scripts/pd.mjs replan-check <项目根>     # 规划者主动检查：哪�
 node scripts/pd.mjs ask-check <项目根> "满减 叠加"   # 提问前查决策登记册，已决定的不再问
 node scripts/pd.mjs skills  <项目根>          # 检查外部 Skill，缺失时输出官方仓库和安装命令
 node scripts/pd.mjs quality <项目根> --changed --phase T001 --test-cmd "npm test -- price"  # 可选质量信号（CRAP/重复/变异），永不阻塞
+node scripts/pd.mjs spec-check <项目根>        # v0.6 发卡前自洽检查（0 干净 / 1 提醒 / 3 BLOCKING）
+node scripts/pd.mjs reassign <项目根> --task T001-02 --to <owner>   # v0.6 重派并携带前任记录
+node scripts/pd.mjs brief   <项目根>          # v0.6 新会话简报 ≤2 KB
+node scripts/pd.mjs digest  <项目根> --file test.log    # v0.6 测试日志摘要 ≤1 KB
+node scripts/pd.mjs outline <项目根> --file docs/x.md [--section 标题]   # v0.6 大文档按需读
+node scripts/pd.mjs index   <项目根>          # v0.6 文档索引
+node scripts/pd.mjs findings-check <项目根> --file findings.json   # v0.6 结构化审查发现
+node scripts/pd.mjs doctor  <项目根> [--profile release]   # v0.6 体检汇总与发版档位
 node scripts/self-test.mjs                     # 自测
 ```
 

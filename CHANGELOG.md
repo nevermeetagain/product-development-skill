@@ -1,10 +1,19 @@
 # 变更记录
 
 
-## 0.6.0（进行中）
+## 0.6.0（2026-11-02）
+
+全部 25 张卡由 Hark 独立实现与测试（不派助手）。self-test 116 → 186 通过，0 失败。可执行体系与证据链见 `docs/v0.6.0/execution-system.md`，真实场景复现见 `docs/v0.6-dogfood.md`。
+- 地基（600）：`self-test --filter <标签>` 定向运行；新子命令放 `scripts/cmd/<名>.mjs`。
+- 账本与停滞（611–614）：事件 CLAIM/HEARTBEAT/CHECKPOINT/RULING/REASSIGN；停滞检测 UNCLAIMED_STALL/CLAIMED_IDLE/SILENT_STALL（status 首行、replan-check 首项）；`reassign` 携带前任记录；**`sync` 不再 rebase**（远程领先改为 merge，冲突中止）。
+- 卡面自洽（621–623）：`files{create,modify,test,read}`；`spec-check` 六项检查，退出码 0/1/3。
+- 完成与验证（631–633）：NEEDS_VALIDATION；执行者不得自证 VERIFIED；TEST_RUN 记退出码；`findings-check`；阶段复核协议 `references/phase-review.md`。
+- 上下文经济（641–644）：`digest`（≤1 KB）、`brief`（≤2 KB，P1 不截断）、`index` / `outline --section`；ask-check 检索 RULING/CHECKPOINT。
+- 卫生、档位、性能（651–654）：私钥与助手记忆目录泄露检测、`secret_allowlist`（指纹 + 理由）；`doctor --profile dev|release`；失败阶梯、`--not-checked`/`--risks`/deferral 需 `--trigger`；下游计数一次建图、推送后不重复 fetch。
+- 外部生态表 29 个链接实测 200（603b）。
 
 - P1 立魂与减法（PDS-601/602/603）：SKILL.md 214→118 行，以信条“只信证据、只做必要、卡住就说”统领准则 1–17；模式细则下沉 `references/modes.md`，跨平台表下沉 `tool-compatibility.md`；新增 `references/routing.md`（会话启动路由 + 规划者/执行者红旗表）；`pd.mjs prompt` 首段标注“已路由，勿再路由”；`skill-ecosystem.md` 更正 writing-plans（不写代码体）、executing-plans（连续执行）、gsd-2 已归档，并新增 v0.6 借鉴表；规则去向见 `docs/v0.6-rule-map.md`。
-- 规划：`docs/v0.6.0/plan.md`（22 卡），派发视图 `docs/v0.6.0/executor-prompts.md`。
+- 规划：`docs/v0.6.0/plan.md`（22 卡），派发视图 `docs/v0.6.0/executor-prompts.md`（已作废：用户 21:39 撤销助手分工，由 `execution-system.md` 取代）。
 ## 0.5.1（2026-10-28）
 
 可选质量信号改走 Node（不是每位用户都有 Python）：
