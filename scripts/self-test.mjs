@@ -31,6 +31,23 @@ function fresh() {
 }
 const edit = (dir, rel, fn) => { const f = path.join(dir, rel); const j = JSON.parse(fs.readFileSync(f, 'utf8')); fn(j); fs.writeFileSync(f, JSON.stringify(j, null, 2)); };
 
+// ---- v0.6（PDS-600）：模块化用例 scripts/tests/<标签>.test.mjs；--filter a,b 只跑文件名以标签开头的模块（legacy = 本文件的旧用例）
+const filterArg = (() => { const i = process.argv.indexOf('--filter'); return i > 0 ? String(process.argv[i + 1] || '').split(',').map((x) => x.trim()).filter(Boolean) : null; })();
+async function runModules() {
+  const dir = path.join(here, 'tests');
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.test.mjs')).sort() : [];
+  for (const f of files.filter((x) => !filterArg || filterArg.some((k) => x.startsWith(k)))) {
+    console.log(`[模块] ${f}`);
+    const m = await import(new URL(`./tests/${f}`, import.meta.url).href);
+    await m.default({ ok, run, git, fresh, edit, pd, sample, fs, path, os, spawnSync });
+  }
+}
+if (filterArg && !filterArg.includes('legacy')) {
+  await runModules();
+  console.log(`\n结果：${pass} 通过，${fail} 失败（--filter ${filterArg.join(',')}）`);
+  process.exit(fail ? 1 : 0);
+}
+
 console.log('1. 体检');
 let d = fresh();
 let r = run(d, 'health', '.');
@@ -454,5 +471,6 @@ console.log('Q. 可选质量信号 pd quality（不联网：PD_QUALITY_NO_NPX=1�
   ok('目录不存在也退出码 0', x.status === 0 && /UNKNOWN/.test(x.stdout), x.stdout + x.stderr);
 }
 
+if (!filterArg) await runModules();
 console.log(`\n结果：${pass} 通过，${fail} 失败`);
 process.exitCode = fail ? 1 : 0;

@@ -37,8 +37,18 @@ const cmd = args._[0];
 const root = args._[1] || '.';
 
 const commands = { health, next, prompt, record, 'test-plan': testPlan, 'test-record': testRecord, status, scan, sync, 'replan-check': replanCheck, 'ask-check': askCheck, skills, quality: qualityCmd };
+// v0.6（PDS-600）：新子命令放 scripts/cmd/<名>.mjs，导出 run(ctx)；pd.mjs 只做分发
+const CMD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cmd');
+const modCmds = fs.existsSync(CMD_DIR) ? fs.readdirSync(CMD_DIR).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)) : [];
+const NO_CONFIG = ['scan', 'skills'];
+if (!commands[cmd] && modCmds.includes(cmd)) {
+  commands[cmd] = async () => {
+    const m = await import(new URL(`./cmd/${cmd}.mjs`, import.meta.url).href);
+    await m.run({ ws, args, root, cmd, helpers: { blockers, readyTasks, buildPrompt, record, wsPath, relp, health, status } });
+  };
+}
 if (!commands[cmd]) {
-  die('用法：node pd.mjs <health|next|prompt|record|test-plan|test-record|status|scan|sync|replan-check|ask-check|skills|quality> [root] [选项]');
+  die(`用法：node pd.mjs <${Object.keys(commands).join('|')}> [root] [选项]`);
 }
 let ws;
 // scan / skills 不需要 config；不调用 process.exit，避免 Windows 控制台异步输出被截断
