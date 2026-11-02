@@ -407,7 +407,7 @@ function record() {
   const g = gitInfo(ws.root);
   const ev = { at: nowIso(), task: t.id, event, actor: args.by || process.env.PD_ACTOR || 'unknown', branch: g.branch, head: g.head, dirty: g.dirty };
   for (const k of ['note', 'evidence', 'status', 'needs', 'escalate', 'options', 'recommend']) if (args[k]) ev[k] = String(args[k]);
-  for (const k of ['learned', 'next-steps', 'decision', 'reason', 'cost', 'to']) if (args[k]) ev[k.replace('-', '_')] = String(args[k]);
+  for (const k of ['learned', 'next-steps', 'decision', 'reason', 'cost', 'to', 'missing', 'where']) if (args[k]) ev[k.replace('-', '_')] = String(args[k]);
   for (const k of EVENT_REQUIRED[event] || []) if (!args[k]) die(`${event} 必须带 --${k}（PDS-611：${event === 'RULING' ? '裁决写清 决定/理由/若错的代价' : event === 'CHECKPOINT' ? '断点写清 学到了什么/下一步' : '写清重派给谁'}）`);
   if (event === 'CLAIM' && ev.actor === 'unknown') die('CLAIM 必须带 --by <owner>（或设 PD_ACTOR），否则无法判断谁认领');
   if (ev.evidence) ev.evidence = toPosix(ev.evidence);
@@ -443,6 +443,16 @@ function record() {
   if (event === 'BLOCKED') { t.blocked_reason = ev.note; t.escalation = { needs: ev.needs, to: ev.escalate || 'planner', options: ev.options, recommend: ev.recommend, at: ev.at }; if (!ev.status) status = 'BLOCKED'; }
   if (event === 'UNBLOCKED') { delete t.blocked_reason; delete t.escalation; if (!ev.status) status = 'TODO'; }
   if (['DONE', 'VERIFIED', 'FAILED'].includes(event) && !ev.status) status = event;
+  if (event === 'NEEDS_VALIDATION') { ex.missing_validation = ev.missing; if (!ev.status) status = 'NEEDS_VALIDATION'; }
+  if (ev.where && !['local', 'target'].includes(ev.where)) die('--where 只能是 local（本地/沙箱）或 target（目标环境）');
+  if (ev.where && ev.evidence) ex.evidence_where = { ...(ex.evidence_where || {}), [ev.evidence]: ev.where };
+  // PDS-631：执行者不得自证 VERIFIED（双方身份可判定时才拦；unknown 不猜）
+  if (status === 'VERIFIED' && (t.role || 'executor') !== 'tester') {
+    const executor = ex.owner || ex.actor;
+    if (executor && executor !== 'unknown' && ev.actor === executor) die(`拒绝：${t.id} 的执行者 ${executor} 不能自己标 VERIFIED；由测试者或规划者验证（--by <其他人>），或停在 DONE`);
+    const indep = (ws.ledger.entries || []).some((e) => e.result === 'PASS' && e.kind !== 'quality_signal' && (e.target === t.id || e.target === t.phase || (e.covers_tasks || []).includes(t.id)) && !(executor && executor !== 'unknown' && e.tester === executor));
+    if (!indep) die(`拒绝：${t.id} 要标 VERIFIED，需要非执行者（${executor}）登记的 PASS；执行者自己的 TEST_RUN 只算自测`);
+  }
   if (DONE_LIKE.includes(status) && !DONE_LIKE.includes(t.status)) {
     const tmx = taskMap(ws); const sat = ws.config.dependency_satisfied_by || ['DONE', 'VERIFIED'];
     const unmet = (t.depends_on || []).filter((d) => !sat.includes(tmx.get(d)?.status) && tmx.get(d)?.status !== 'SUPERSEDED');
@@ -462,11 +472,15 @@ function record() {
   t.status = status;
   if (event === 'TEST_RUN' && args.cmd && args.paths && args.result) {
     if (!RESULT.includes(args.result)) die('--result 只能是 PASS/FAIL/UNKNOWN');
+    // PDS-631：记录真实退出码；退出码非 0 不得登记 PASS
+    const exitCode = args['exit-code'] !== undefined ? Number(args['exit-code']) : null;
+    if (exitCode !== null && !Number.isInteger(exitCode)) die('--exit-code 必须是整数');
+    if (exitCode !== null && exitCode !== 0 && args.result === 'PASS') die(`拒绝：退出码 ${exitCode} 不能登记 PASS`);
     const covers = pathList(args.paths);
     const miss = missingAtRev(ws.root, covers);
     if (miss.length) console.log(`提醒：这些覆盖路径在 HEAD 中不存在：${miss.join(', ')}（未提交、拼错，或大小写与 Git 记录不一致），指纹记为 missing`);
     const entry = { id: `TR-${stamp()}-${t.id.replace(/[^A-Za-z0-9-]/g, '')}`, at: ev.at, scope: 'task', kind: 'targeted', target: t.id, result: args.result,
-      commit: g.head, dirty: g.dirty, covers_paths: covers, fingerprint: fingerprint(ws.root, covers), commands: [String(args.cmd)], tester: ev.actor, by_role: t.role || 'executor' };
+      commit: g.head, dirty: g.dirty, covers_paths: covers, fingerprint: fingerprint(ws.root, covers), commands: [String(args.cmd)], tester: ev.actor, by_role: t.role || 'executor', ...(args['exit-code'] !== undefined ? { exit_code: Number(args['exit-code']) } : {}), ...(args['duration-ms'] ? { duration_ms: Number(args['duration-ms']) } : {}) };
     if (ws.testLedgerFile) { ws.ledger.entries = [...(ws.ledger.entries || []), entry]; writeJson(ws.testLedgerFile, ws.ledger); ev.ledger_entry = entry.id; console.log(`定向测试已登记测试台账 ${entry.id}（阶段体检可据此复用）`); }
     if (g.dirty) console.log('提醒：先提交再记 TEST_RUN，指纹才能覆盖本次改动；否则阶段体检会判定需要重测。');
   }

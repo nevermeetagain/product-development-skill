@@ -7,7 +7,8 @@ import crypto from 'node:crypto';
 
 export const IS_WIN = process.platform === 'win32';
 
-export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'DONE', 'VERIFIED', 'BLOCKED', 'FAILED', 'SUPERSEDED'];
+// v0.6（PDS-631）：NEEDS_VALIDATION = 代码已交付、但目标环境验证缺条件（不算完成，下游不就绪）
+export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'DONE', 'VERIFIED', 'BLOCKED', 'FAILED', 'SUPERSEDED', 'NEEDS_VALIDATION'];
 export const DONE_LIKE = ['DONE', 'VERIFIED'];
 export const DECISION_STATUS = ['PROPOSED', 'OPEN', 'DECIDED', 'SUPERSEDED', 'REJECTED'];
 export const ROLES = ['planner', 'executor', 'tester', 'user'];
@@ -16,9 +17,9 @@ export const RESULT = ['PASS', 'FAIL', 'UNKNOWN'];
 export const EVENTS = ['STARTED', 'PLAN_CONFIRMED', 'BLOCKED', 'UNBLOCKED', 'TEST_RUN', 'COMMITTED', 'PUSHED', 'PUSH_FAILED',
   'DONE', 'VERIFIED', 'FAILED', 'CORRECTION', 'ESCALATED', 'DECIDED', 'REPLANNED', 'NOTE',
   // v0.6（PDS-611）：认领、心跳、断点、裁决、重派
-  'CLAIM', 'HEARTBEAT', 'CHECKPOINT', 'RULING', 'REASSIGN'];
+  'CLAIM', 'HEARTBEAT', 'CHECKPOINT', 'RULING', 'REASSIGN', 'NEEDS_VALIDATION'];
 /** 事件必填字段（PDS-611）：缺一即拒绝写入 */
-export const EVENT_REQUIRED = { CHECKPOINT: ['learned', 'next-steps'], RULING: ['decision', 'reason', 'cost'], REASSIGN: ['to'] };
+export const EVENT_REQUIRED = { CHECKPOINT: ['learned', 'next-steps'], RULING: ['decision', 'reason', 'cost'], REASSIGN: ['to'], NEEDS_VALIDATION: ['missing'] };
 
 const SECRET_PATTERNS = [
   /ghp_[A-Za-z0-9]{20,}/, /github_pat_[A-Za-z0-9_]{20,}/, /gho_[A-Za-z0-9]{20,}/,
